@@ -104,29 +104,22 @@ struct QAOverlay: View {
     var screen: String
 
     var body: some View {
-        NavigationStack {
-            Group {
-                switch screen {
-                case "approvals":
-                    ApprovalsView()
-                case "invitekeys":
-                    InviteKeysView()
-                case "provider":
-                    ProviderSettingsView()
-                case "newtask":
-                    TasksView(showNewTask: true)
-                case "settings":
-                    SettingsView()
-                case "memory":
-                    MemoryView()
-                default:
-                    HomeView()
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Schließen") { store.qaScreen = nil }
-                }
+        Group {
+            switch screen {
+            case "approvals":
+                NavigationStack { ApprovalsView() }
+            case "invitekeys":
+                NavigationStack { InviteKeysView() }
+            case "provider":
+                NavigationStack { ProviderSettingsView() }
+            case "newtask":
+                TasksView(showNewTask: true)
+            case "settings":
+                SettingsView()
+            case "memory":
+                MemoryView()
+            default:
+                HomeView()
             }
         }
         .preferredColorScheme(store.appearance.colorScheme)

@@ -1,6 +1,7 @@
 import SwiftUI
 
 @main
+@MainActor
 struct TandemApp: App {
     @State private var store = TandemStore()
 
