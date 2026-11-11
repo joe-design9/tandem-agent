@@ -1,0 +1,420 @@
+import SwiftUI
+
+/// Das Herz der Sicherheit: jede riskante Aktion liegt hier als Karte,
+/// mit allem, was du zum Entscheiden brauchst — Empfänger, Betreff,
+/// Text, Risiko und der Grund, warum Tandem sie vorschlägt.
+struct ApprovalsView: View {
+    @Environment(TandemStore.self) private var store
+    @State private var editing: ApprovalRequest?
+    @State private var rejectTarget: ApprovalRequest?
+    @State private var expanded: Set<UUID> = []
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                ruleCard
+
+                if store.pendingApprovals.isEmpty {
+                    emptyState
+                } else {
+                    SectionHeader(title: "Offen", subtitle: nil, icon: "hand.raised.fill",
+                                  trailing: "\(store.pendingApprovals.count) warten")
+                    ForEach(store.pendingApprovals) { approval in
+                        approvalCard(approval)
+                    }
+                }
+
+                if !store.decidedApprovals.isEmpty {
+                    SectionHeader(title: "Entschieden", subtitle: nil, icon: "checkmark.seal.fill",
+                                  trailing: "\(store.decidedApprovals.count)")
+                    GlassCard(tint: nil, glow: false, padding: 6) {
+                        VStack(spacing: 0) {
+                            ForEach(store.decidedApprovals) { approval in
+                                decidedRow(approval)
+                                if approval.id != store.decidedApprovals.last?.id {
+                                    Rectangle().fill(Color.white.opacity(0.07))
+                                        .frame(height: 0.7)
+                                        .padding(.leading, 44)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 6)
+            .padding(.bottom, 30)
+        }
+        .scrollIndicators(.hidden)
+        .navigationTitle("Freigaben")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $editing) { approval in
+            ApprovalEditView(approval: approval) { updated in
+                store.updateApproval(updated)
+                editing = nil
+            }
+        }
+        .confirmationDialog("Freigabe ablehnen?",
+                            isPresented: Binding(get: { rejectTarget != nil },
+                                                 set: { if !$0 { rejectTarget = nil } }),
+                            titleVisibility: .visible) {
+            Button("Ablehnen", role: .destructive) {
+                if let target = rejectTarget {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        store.reject(target.id)
+                    }
+                }
+                rejectTarget = nil
+            }
+            Button("Zurück", role: .cancel) { rejectTarget = nil }
+        } message: {
+            Text("Nichts wird ausgeführt. Tandem merkt sich die Ablehnung im Protokoll.")
+        }
+    }
+
+    private var ruleCard: some View {
+        GlassCard(tint: store.accent, glow: true, padding: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle().fill(store.accent.opacity(0.16)).frame(width: 38, height: 38)
+                    Image(systemName: "hand.raised.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(store.accent)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Nichts geht ohne dein Ja raus")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                    Text("Tandem bereitet vor und wartet. E-Mails, Zahlungen, Kalenderänderungen und Löschungen laufen erst nach deiner Freigabe — jede Entscheidung landet im Protokoll.")
+                        .font(.system(size: 11.5, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        GlassCard(tint: nil, glow: false, padding: 22) {
+            VStack(spacing: 10) {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 30, weight: .light))
+                    .foregroundStyle(store.accent)
+                Text("Alles erledigt")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                Text("Keine offenen Freigaben. Tandem meldet sich, sobald etwas deine Entscheidung braucht.")
+                    .font(.system(size: 11.5, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func approvalCard(_ approval: ApprovalRequest) -> some View {
+        let isExpanded = expanded.contains(approval.id)
+        return VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(approval.kind.tint.opacity(0.16))
+                            .frame(width: 34, height: 34)
+                        Image(systemName: approval.kind.icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(approval.kind.tint)
+                    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(approval.kind.title.uppercased())
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .tracking(1.1)
+                            .foregroundStyle(.secondary)
+                        Text(RelativeTime.string(from: approval.createdAt))
+                            .font(.system(size: 9.5, design: .rounded))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer(minLength: 0)
+                    StatusBadge(text: approval.risk.title, tint: approval.risk.color,
+                                icon: approval.risk == .high ? "exclamationmark.triangle.fill" : "shield.lefthalf.filled")
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(approval.title)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(approval.summary)
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let amount = approval.amount {
+                    HStack(spacing: 6) {
+                        Image(systemName: "eurosign.circle.fill").font(.system(size: 12))
+                        Text(amount)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(approval.risk.color)
+                }
+
+                if isExpanded {
+                    previewBlock(approval)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
+                HStack(spacing: 6) {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            if isExpanded { expanded.remove(approval.id) } else { expanded.insert(approval.id) }
+                        }
+                        Haptics.tap()
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text(isExpanded ? "Vorschau schließen" : "Vorschau ansehen")
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 8, weight: .bold))
+                        }
+                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                    if !approval.tool.isEmpty {
+                        Text(approval.tool)
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+
+                if let reason = approval.reason {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 9))
+                            .foregroundStyle(store.accent)
+                            .padding(.top, 2)
+                        Text(reason)
+                            .font(.system(size: 10.5, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    Button {
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                            store.approve(approval.id)
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: approval.kind == .email ? "paperplane.fill" : "checkmark")
+                                .font(.system(size: 10, weight: .bold))
+                            Text(approval.kind == .email ? "Freigeben & Senden" : "Freigeben & Ausführen")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryGlassButtonStyle(tint: approval.kind.tint))
+
+                    Button {
+                        Haptics.tap()
+                        editing = approval
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(SecondaryGlassButtonStyle())
+
+                    Button {
+                        Haptics.warning()
+                        rejectTarget = approval
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color(red: 1.0, green: 0.52, blue: 0.58))
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(SecondaryGlassButtonStyle())
+                }
+            }
+            .padding(16)
+        }
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.clear)
+                .glassEffect(.regular.tint(approval.kind.tint.opacity(0.10)),
+                             in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(colors: [Color.white.opacity(0.28), Color.white.opacity(0.04)],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing),
+                            lineWidth: 1
+                        )
+                }
+        }
+    }
+
+    private func previewBlock(_ approval: ApprovalRequest) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let recipient = approval.recipient {
+                HStack(spacing: 6) {
+                    Text("An")
+                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                        .tracking(1)
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 22, alignment: .leading)
+                    Text(recipient)
+                        .font(.system(size: 11.5, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+            }
+            if let subject = approval.subject {
+                HStack(spacing: 6) {
+                    Text("Betreff")
+                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                        .tracking(1)
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 44, alignment: .leading)
+                    Text(subject)
+                        .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                        .lineLimit(2)
+                }
+            }
+            if let body = approval.body {
+                Text(body)
+                    .font(.system(size: 11.5, design: .rounded))
+                    .foregroundStyle(.primary.opacity(0.86))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.black.opacity(0.18))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8)
+                            }
+                    }
+            }
+        }
+    }
+
+    private func decidedRow(_ approval: ApprovalRequest) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: approval.state == .executed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(approval.state == .executed
+                                 ? Color(red: 0.50, green: 0.92, blue: 0.74)
+                                 : Color(red: 1.0, green: 0.52, blue: 0.58))
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(approval.title)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .lineLimit(1)
+                Text("\(approval.state.title) · \(approval.decidedAt.map { RelativeTime.clock($0) } ?? "—")")
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundStyle(.tertiary)
+            }
+            Spacer(minLength: 0)
+            Text(approval.kind.title)
+                .font(.system(size: 9.5, design: .rounded))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+    }
+}
+
+// MARK: - Bearbeiten
+
+struct ApprovalEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(TandemStore.self) private var store
+
+    @State var approval: ApprovalRequest
+    var onSave: (ApprovalRequest) -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    GlassCard(tint: nil, glow: false) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if approval.recipient != nil {
+                                editField(title: "An", text: Binding(
+                                    get: { approval.recipient ?? "" },
+                                    set: { approval.recipient = $0 }))
+                            }
+                            if approval.subject != nil {
+                                editField(title: "Betreff", text: Binding(
+                                    get: { approval.subject ?? "" },
+                                    set: { approval.subject = $0 }))
+                            }
+                            if approval.body != nil {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text("TEXT")
+                                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                                        .tracking(1.2)
+                                        .foregroundStyle(.tertiary)
+                                    TextEditor(text: Binding(
+                                        get: { approval.body ?? "" },
+                                        set: { approval.body = $0 }))
+                                        .font(.system(size: 13, design: .rounded))
+                                        .scrollContentBackground(.hidden)
+                                        .frame(minHeight: 180)
+                                        .padding(8)
+                                        .background {
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .fill(Color.white.opacity(0.06))
+                                        }
+                                }
+                            }
+                        }
+                    }
+                    Text("Tandem behält deine Änderungen bei. Erst mit der Freigabe geht die Aktion raus.")
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(18)
+            }
+            .background(AmbientBackdrop(theme: store.themeChoice, accent: store.accent))
+            .navigationTitle("Bearbeiten")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        Haptics.success()
+                        var updated = approval
+                        updated.note = "Von dir bearbeitet"
+                        onSave(updated)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private func editField(title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title.uppercased())
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .tracking(1.2)
+                .foregroundStyle(.tertiary)
+            TextField(title, text: text)
+                .font(.system(size: 13.5, design: .rounded))
+                .padding(10)
+                .background {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                }
+        }
+    }
+}
