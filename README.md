@@ -105,7 +105,7 @@ TandemAgent/
 ├── Design/         Glass (Obsidian-Bühne, Glasflächen, Typografie, Haptik), RichText (Markdown + Tabellen)
 ├── Features/       InviteGate, Onboarding, Home, Approvals, Tasks, Chat, Memory, Settings, InviteKeys
 └── Services/       AIService (Streaming, 5 Provider), DemoBrain (Agenten-Simulator), Keychain
-.github/workflows/  build-ipa.yml, qa-screenshots.yml
+.github/workflows/  build-ipa.yml (unverändert: unsignierte IPA, Release-Upload)
 ```
 
 **Sicherheitsmodell:** `AgentEngine` führt einen Plan schrittweise aus und schreibt jeden Werkzeugaufruf in ein `AgentLogEntry`-Protokoll. Sensible Werkzeuge geben keine Wirkung zurück, sondern ein `ApprovalRequest` — der Lauf endet dann auf dem Tisch statt in der Welt. `ApprovalRequest` hat `pending → executed | rejected`, jede Entscheidung schreibt ein `AuditEvent`. Der Chat kann Aktionen nur *vorschlagen*: die Ausführung hängt am Freigabe-Objekt, nicht am Text des Modells.
