@@ -38,9 +38,9 @@ enum AutonomyLevel: String, Codable, CaseIterable, Identifiable {
 
     var tint: Color {
         switch self {
-        case .ask: return Color(red: 0.55, green: 0.75, blue: 1.0)
-        case .suggest: return AccentChoice.mint.color
-        case .act: return AccentChoice.amber.color
+        case .ask: return Color(red: 0.42, green: 0.80, blue: 1.00)
+        case .suggest: return VicePalette.cyan
+        case .act: return VicePalette.gold
         }
     }
 }
@@ -62,9 +62,9 @@ enum Risk: String, Codable, CaseIterable {
 
     var color: Color {
         switch self {
-        case .low: return Color(red: 0.45, green: 0.90, blue: 0.72)
-        case .medium: return Color(red: 1.00, green: 0.78, blue: 0.42)
-        case .high: return Color(red: 1.00, green: 0.45, blue: 0.52)
+        case .low: return Color(red: 0.35, green: 1.00, blue: 0.74)
+        case .medium: return VicePalette.gold
+        case .high: return VicePalette.hotPink
         }
     }
 }
@@ -101,10 +101,10 @@ struct ApprovalRequest: Identifiable, Codable, Hashable {
 
         var tint: Color {
             switch self {
-            case .email: return Color(red: 0.45, green: 0.72, blue: 1.00)
-            case .payment: return Color(red: 0.55, green: 0.92, blue: 0.70)
-            case .calendar: return Color(red: 1.00, green: 0.78, blue: 0.42)
-            case .deletion: return Color(red: 1.00, green: 0.45, blue: 0.52)
+            case .email: return VicePalette.cyan
+            case .payment: return VicePalette.gold
+            case .calendar: return VicePalette.coral
+            case .deletion: return VicePalette.hotPink
             case .message: return Color(red: 0.72, green: 0.60, blue: 1.00)
             }
         }
@@ -179,11 +179,11 @@ struct AgentTask: Identifiable, Codable, Hashable {
 
         var color: Color {
             switch self {
-            case .queued: return Color(red: 0.60, green: 0.70, blue: 0.85)
-            case .running: return AccentChoice.mint.color
-            case .paused: return AccentChoice.amber.color
-            case .done: return Color(red: 0.55, green: 0.92, blue: 0.70)
-            case .cancelled: return Color(red: 1.00, green: 0.50, blue: 0.55)
+            case .queued: return Color(red: 0.62, green: 0.62, blue: 1.00)
+            case .running: return VicePalette.cyan
+            case .paused: return VicePalette.gold
+            case .done: return Color(red: 0.40, green: 1.00, blue: 0.74)
+            case .cancelled: return VicePalette.hotPink
             }
         }
     }
@@ -229,9 +229,9 @@ struct AuditEvent: Identifiable, Codable, Hashable {
 
         var color: Color {
             switch self {
-            case .approval: return Color(red: 1.00, green: 0.78, blue: 0.42)
-            case .task: return AccentChoice.mint.color
-            case .scan: return Color(red: 0.45, green: 0.72, blue: 1.00)
+            case .approval: return VicePalette.gold
+            case .task: return VicePalette.cyan
+            case .scan: return Color(red: 0.55, green: 0.75, blue: 1.00)
             case .system: return Color(red: 0.70, green: 0.72, blue: 0.80)
             case .memory: return Color(red: 0.72, green: 0.60, blue: 1.00)
             }
@@ -249,9 +249,9 @@ struct CheckIn: Identifiable, Codable, Hashable {
 
         var color: Color {
             switch self {
-            case .neutral: return Color(red: 0.70, green: 0.78, blue: 0.92)
-            case .good: return Color(red: 0.50, green: 0.92, blue: 0.74)
-            case .warn: return Color(red: 1.00, green: 0.76, blue: 0.42)
+            case .neutral: return VicePalette.cyan
+            case .good: return Color(red: 0.40, green: 1.00, blue: 0.74)
+            case .warn: return VicePalette.coral
             }
         }
     }
@@ -315,8 +315,8 @@ struct ConnectedService: Identifiable, Codable, Hashable {
 
         var color: Color {
             switch self {
-            case .connected: return Color(red: 0.50, green: 0.92, blue: 0.74)
-            case .pending: return Color(red: 1.00, green: 0.78, blue: 0.42)
+            case .connected: return Color(red: 0.40, green: 1.00, blue: 0.74)
+            case .pending: return VicePalette.gold
             case .off: return Color(red: 0.62, green: 0.66, blue: 0.75)
             }
         }
@@ -336,12 +336,12 @@ struct ConnectedService: Identifiable, Codable, Hashable {
 enum ServiceTint {
     static func color(_ key: String) -> Color {
         switch key {
-        case "mail": return Color(red: 0.45, green: 0.72, blue: 1.00)
-        case "calendar": return Color(red: 1.00, green: 0.78, blue: 0.42)
-        case "github": return Color(red: 0.80, green: 0.82, blue: 0.90)
-        case "x": return Color(red: 0.90, green: 0.90, blue: 0.95)
-        case "device": return AccentChoice.mint.color
-        case "music": return Color(red: 1.00, green: 0.48, blue: 0.58)
+        case "mail": return VicePalette.cyan
+        case "calendar": return VicePalette.coral
+        case "github": return Color(red: 0.85, green: 0.88, blue: 0.98)
+        case "x": return Color(red: 0.92, green: 0.92, blue: 0.97)
+        case "device": return VicePalette.cyan
+        case "music": return VicePalette.magenta
         default: return Color(red: 0.70, green: 0.76, blue: 0.90)
         }
     }
@@ -454,9 +454,9 @@ enum ProviderID: String, Codable, CaseIterable, Identifiable, Hashable {
 
     var tint: Color {
         switch self {
-        case .simulator: return AccentChoice.mint.color
-        case .anthropic: return Color(red: 0.92, green: 0.70, blue: 0.52)
-        case .openai: return Color(red: 0.55, green: 0.92, blue: 0.78)
+        case .simulator: return VicePalette.magenta
+        case .anthropic: return VicePalette.coral
+        case .openai: return Color(red: 0.55, green: 0.96, blue: 0.86)
         case .deepseek: return Color(red: 0.52, green: 0.62, blue: 1.00)
         case .openrouter: return Color(red: 0.78, green: 0.60, blue: 1.00)
         case .custom: return Color(red: 0.80, green: 0.84, blue: 0.92)
@@ -545,9 +545,9 @@ struct ToastMessage: Identifiable, Equatable {
 
         var color: Color {
             switch self {
-            case .success: return Color(red: 0.50, green: 0.92, blue: 0.74)
-            case .info: return AccentChoice.mint.color
-            case .warning: return Color(red: 1.00, green: 0.76, blue: 0.42)
+            case .success: return Color(red: 0.40, green: 1.00, blue: 0.74)
+            case .info: return VicePalette.cyan
+            case .warning: return VicePalette.gold
             }
         }
     }

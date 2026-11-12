@@ -52,27 +52,33 @@ struct TasksView: View {
 
     private var header: some View {
         GlassCard(tint: store.accent, glow: true, padding: 16) {
-            HStack(spacing: 13) {
-                ZStack {
-                    Circle().stroke(store.accent.opacity(0.18), lineWidth: 4).frame(width: 52, height: 52)
-                    Circle()
-                        .trim(from: 0, to: runningProgress)
-                        .stroke(store.accent.gradient, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 52, height: 52)
-                    Text("\(store.runningTasks.count)")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+            VStack(alignment: .leading, spacing: 12) {
+                ViceBadge(text: "Vice City Agent Protocol", tint: VicePalette.magenta, icon: "bolt.fill")
+                HStack(spacing: 13) {
+                    ZStack {
+                        Circle().stroke(VicePalette.cyan.opacity(0.18), lineWidth: 4).frame(width: 52, height: 52)
+                        Circle()
+                            .trim(from: 0, to: runningProgress)
+                            .stroke(LinearGradient(colors: [VicePalette.cyan, VicePalette.magenta],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .frame(width: 52, height: 52)
+                            .shadow(color: VicePalette.cyan.opacity(0.6), radius: 6)
+                        Text("\(store.runningTasks.count)")
+                            .font(.system(size: 18, weight: .black, design: .rounded))
+                            .monospacedDigit()
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(store.runningTasks.isEmpty ? "Alles abgearbeitet" : "\(store.runningTasks.count) Aufgaben laufen")
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                        Text("Autonomie: \(store.defaultAutonomy.title) · riskante Schritte halten immer an")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
                 }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.runningTasks.isEmpty ? "Alles abgearbeitet" : "\(store.runningTasks.count) Aufgaben laufen")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Text("Autonomie: \(store.defaultAutonomy.title) · riskante Schritte halten immer an")
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
             }
         }
     }
@@ -93,8 +99,14 @@ struct TasksView: View {
         .background {
             Capsule()
                 .fill(.clear)
-                .glassEffect(.regular.tint(Color.white.opacity(0.07)), in: Capsule())
-                .overlay { Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8) }
+                .glassEffect(.regular.tint(VicePalette.violet.opacity(0.22)), in: Capsule())
+                .overlay {
+                    Capsule().strokeBorder(
+                        LinearGradient(colors: [VicePalette.magenta.opacity(0.55), VicePalette.cyan.opacity(0.45)],
+                                       startPoint: .leading, endPoint: .trailing),
+                        lineWidth: 0.9
+                    )
+                }
         }
     }
 
@@ -111,13 +123,15 @@ struct TasksView: View {
                     .monospacedDigit()
                     .opacity(0.7)
             }
-            .foregroundStyle(segment == index ? Color.black.opacity(0.85) : .secondary)
+            .foregroundStyle(segment == index ? Color.black.opacity(0.88) : .secondary)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
             .background {
                 if segment == index {
-                    Capsule().fill(store.accent.gradient)
+                    Capsule()
+                        .fill(store.accent.gradient)
+                        .shadow(color: store.accent.opacity(0.7), radius: 10)
                 }
             }
         }
@@ -129,13 +143,14 @@ struct TasksView: View {
     @ViewBuilder
     private var activeList: some View {
         if store.runningTasks.isEmpty {
-            GlassCard(tint: nil, glow: false, padding: 22) {
+            GlassCard(tint: VicePalette.cyan, glow: false, padding: 22) {
                 VStack(spacing: 10) {
                     Image(systemName: "moon.zzz")
                         .font(.system(size: 26, weight: .light))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VicePalette.cyan)
+                        .shadow(color: VicePalette.cyan.opacity(0.7), radius: 10)
                     Text("Keine laufenden Aufgaben")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                     Text("Tippe auf + und gib ein Ziel an — Tandem zerlegt es in Schritte.")
                         .font(.system(size: 11.5, design: .rounded))
                         .foregroundStyle(.secondary)

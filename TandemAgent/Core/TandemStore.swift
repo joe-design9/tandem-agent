@@ -41,10 +41,10 @@ final class TandemStore {
     var customModel: String = "" {
         didSet { defaults.set(customModel, forKey: Keys.customModel) }
     }
-    var themeChoice: GlacierTheme = .aurora {
+    var themeChoice: GlacierTheme = .electricVice {
         didSet { defaults.set(themeChoice.rawValue, forKey: Keys.theme) }
     }
-    var accentChoice: AccentChoice = .mint {
+    var accentChoice: AccentChoice = .vicePink {
         didSet { defaults.set(accentChoice.rawValue, forKey: Keys.accent) }
     }
     var appearance: Appearance = .dark {
@@ -143,6 +143,13 @@ final class TandemStore {
         }
         if let raw = defaults.string(forKey: Keys.accent), let value = AccentChoice(rawValue: raw) {
             accentChoice = value
+        }
+        // 1.1.0 bringt Leonida: einmalig auf die Vice-Bühne umschalten,
+        // auch wenn eine alte 1.0.0-Installation ihre Einstellungen behält.
+        if !defaults.bool(forKey: "tandem.viceMigration") {
+            themeChoice = .electricVice
+            accentChoice = .vicePink
+            defaults.set(true, forKey: "tandem.viceMigration")
         }
         if let raw = defaults.string(forKey: Keys.appearance), let value = Appearance(rawValue: raw) {
             appearance = value
@@ -582,21 +589,21 @@ final class TandemStore {
     }
 
     private static let focusIdeas: [String] = [
-        "Heute zählt ein Ding: Tandem v1.0.0 rausbringen. Danach ist der Kopf frei für Reviews.",
+        "Heute zählt ein Ding: Tandem 1.1.0 rausbringen — danach ist der Kopf frei für Reviews.",
         "Drei Termine, ein langer Fokusblock — ich habe die Mails schon vorsortiert.",
-        "Ruhiger Tag. Perfekt, um das Playtest-Vault-Release zu schneiden.",
+        "Ruhiger Tag in Leonida. Perfekt, um das Playtest-Vault-Release zu schneiden.",
         "Vor dem Mittagessen ist dein Kalender voll, ab 13 Uhr kannst du durchziehen.",
     ]
 
     private static let scanRotation: [(icon: String, title: String, detail: String, tone: CheckIn.Tone)] = [
-        ("envelope.badge", "Mail-Check vor einem Moment", "0 neue dringende Mails", .good),
-        ("chevron.left.forwardslash.chevron.right", "GitHub-Scan", "Alle Repos grün, keine roten Läufe", .good),
-        ("calendar", "Kalender geprüft", "Nächster Termin in 42 Minuten", .neutral),
-        ("cloud.sun.rain", "Wetter aktualisiert", "Regenfenster ab 16 Uhr bestätigt", .warn),
-        ("bolt.batteryblock", "Gerätestatus", "Akku 74 %, Backup um 03:12 gelaufen", .good),
-        ("brain.head.profile", "Gedächtnis", "2 neue Fakten aus dem Chat übernommen", .neutral),
-        ("person.2.wave.2", "Kontakte", "Keine offenen Anfragen", .neutral),
-        ("doc.text.magnifyingglass", "Dokumente", "Keine neuen Verträge oder Rechnungen", .good),
+        ("envelope.badge", "Weazel News · Mail-Scan", "0 neue dringende Mails", .good),
+        ("chevron.left.forwardslash.chevron.right", "Leonida Dispatch · GitHub", "Alle Repos grün, keine roten Läufe", .good),
+        ("calendar", "VCPR · Kalender", "Nächster Termin in 42 Minuten", .neutral),
+        ("cloud.sun.rain", "Vice Wetter · Ocean Drive", "Regenfenster ab 16 Uhr bestätigt", .warn),
+        ("bolt.batteryblock", "ViceNet · Gerätestatus", "Akku 74 %, Backup um 03:12 gelaufen", .good),
+        ("brain.head.profile", "Tandem Gedächtnis", "2 neue Fakten aus dem Chat übernommen", .neutral),
+        ("person.2.wave.2", "Vice City Kontakte", "Keine offenen Anfragen", .neutral),
+        ("doc.text.magnifyingglass", "Aktenzeichen Leonida", "Keine neuen Verträge oder Rechnungen", .good),
     ]
 
     private static var proposalRotation: [ApprovalRequest] {
@@ -903,29 +910,29 @@ final class TandemStore {
         briefing = MorningBriefing(
             generatedAt: now.addingTimeInterval(-420),
             greeting: "Guten Morgen",
-            focus: "Heute zählt ein Ding: Tandem v1.0.0 rausbringen. Danach ist der Kopf frei für Reviews.",
-            weather: "Bedeckt, später Nieselregen",
-            weatherDetail: "Ab 16 Uhr sind Schauer unterwegs, gegen 18 Uhr wird es wieder trocken.",
-            weatherIcon: "cloud.drizzle.fill",
-            temperature: "11 °C",
+            focus: "Heute zählt ein Ding: Tandem 1.1.0 rausbringen — Leonida-Edition, Neon überall. Danach ist der Kopf frei für Reviews.",
+            weather: "Sonnig, 24 °C, leichte Palmenbrise",
+            weatherDetail: "Ab 19 Uhr zieht Neon-Regen über Ocean Drive, gegen 21 Uhr klart es auf.",
+            weatherIcon: "sun.max.fill",
+            temperature: "24 °C",
             agenda: [
                 BriefingItem(time: "09:30", title: "Standup mit dem Team", detail: "15 Minuten, danach Fokusblock", icon: "person.2.fill"),
-                BriefingItem(time: "11:00", title: "Fokusblock: Tandem", detail: "Build, IPA, Release v1.0.0", icon: "hammer.fill", highlight: true),
+                BriefingItem(time: "11:00", title: "Fokusblock: Tandem 1.1.0", detail: "Vice-Redesign, Build, IPA, Release", icon: "hammer.fill", highlight: true),
                 BriefingItem(time: "14:00", title: "Review: Playtest Vault", detail: "3 Pull Requests warten", icon: "chevron.left.forwardslash.chevron.right"),
                 BriefingItem(time: "18:30", title: "Laufrunde am Rhein", detail: "6 km, ab 18 Uhr trocken", icon: "figure.run"),
             ],
-            todos: ["Omas iPhone-Backup prüfen", "PR #12 in playtest-vault reviewen", "Release-Notes für Tandem schreiben"],
+            todos: ["Omas iPhone-Backup prüfen", "PR #12 in playtest-vault reviewen", "Release-Notes für Tandem 1.1.0 schreiben"],
             nightNote: "Nachtaktivität: Mail-Scan um 02:14 (0 dringend), GitHub durchgehend grün, iPhone-Backup um 03:12 gesichert."
         )
 
         checkIns = [
-            CheckIn(icon: "envelope.badge", title: "Mail-Check vor 15 Min.", detail: "3 neue Mails, 1 davon dringend", date: now.addingTimeInterval(-900), tone: .warn),
-            CheckIn(icon: "chevron.left.forwardslash.chevron.right", title: "GitHub vor 32 Min.", detail: "Alle 4 Repos grün, keine roten CI-Läufe", date: now.addingTimeInterval(-1920), tone: .good),
-            CheckIn(icon: "calendar", title: "Kalender vor 48 Min.", detail: "Nächster Termin 11:00 — Fokusblock Tandem", date: now.addingTimeInterval(-2880), tone: .neutral),
-            CheckIn(icon: "cloud.sun.rain", title: "Wetter vor 1 Std.", detail: "Regenfenster ab 16:00 erkannt", date: now.addingTimeInterval(-3600), tone: .neutral),
-            CheckIn(icon: "brain.head.profile", title: "Gedächtnis vor 2 Std.", detail: "Neuer Fakt: Tandem-Projekt (Release v1.0.0)", date: now.addingTimeInterval(-7200), tone: .good),
-            CheckIn(icon: "bolt.batteryblock", title: "Gerät vor 3 Std.", detail: "Akku 74 %, Backup um 03:12 gelaufen", date: now.addingTimeInterval(-10800), tone: .good),
-            CheckIn(icon: "person.2.wave.2", title: "Kontakte vor 4 Std.", detail: "Keine offenen Anfragen", date: now.addingTimeInterval(-14400), tone: .neutral),
+            CheckIn(icon: "envelope.badge", title: "Weazel News · Mail-Check vor 15 Min.", detail: "3 neue Mails, 1 davon dringend", date: now.addingTimeInterval(-900), tone: .warn),
+            CheckIn(icon: "chevron.left.forwardslash.chevron.right", title: "Leonida Dispatch · GitHub vor 32 Min.", detail: "Alle 4 Repos grün, keine roten CI-Läufe", date: now.addingTimeInterval(-1920), tone: .good),
+            CheckIn(icon: "calendar", title: "VCPR · Kalender vor 48 Min.", detail: "Nächster Termin 11:00 — Fokusblock Tandem", date: now.addingTimeInterval(-2880), tone: .neutral),
+            CheckIn(icon: "cloud.sun.rain", title: "Vice Wetter vor 1 Std.", detail: "Neon-Regen ab 19:00 erkannt", date: now.addingTimeInterval(-3600), tone: .neutral),
+            CheckIn(icon: "brain.head.profile", title: "Tandem Gedächtnis vor 2 Std.", detail: "Neuer Fakt: Tandem-Projekt (Release 1.1.0)", date: now.addingTimeInterval(-7200), tone: .good),
+            CheckIn(icon: "bolt.batteryblock", title: "ViceNet · Gerät vor 3 Std.", detail: "Akku 74 %, Backup um 03:12 gelaufen", date: now.addingTimeInterval(-10800), tone: .good),
+            CheckIn(icon: "person.2.wave.2", title: "Vice City Kontakte vor 4 Std.", detail: "Keine offenen Anfragen", date: now.addingTimeInterval(-14400), tone: .neutral),
             CheckIn(icon: "key.fill", title: "Preview vor 5 Std.", detail: "Invite-Key eingelöst, Founder-Zugang aktiv", date: now.addingTimeInterval(-18000), tone: .good),
         ]
 
@@ -1042,7 +1049,7 @@ final class TandemStore {
                         facts: ["Joel, Köln", "Entwickler — baut unter anderem GTA-6-Hub und Playtest Vault", "Spricht Deutsch, mag trockenen Humor"],
                         updatedAt: now, pinned: true),
             MemoryTopic(emoji: "🛠️", title: "Projekte",
-                        facts: ["gta6-hub: SwiftUI-News-Portal, v2.0.0 mit Neon-Vice-Kulisse", "playtest-vault: Testmanagement, v0.9 in Arbeit", "tandem-agent: dieser Agent, v1.0.0 heute"],
+                        facts: ["gta6-hub: SwiftUI-News-Portal, v2.0.0 mit Neon-Vice-Kulisse", "playtest-vault: Testmanagement, v0.9 in Arbeit", "tandem-agent: dieser Agent, 1.1.0 Leonida Edition"],
                         updatedAt: now.addingTimeInterval(-7200)),
             MemoryTopic(emoji: "👵", title: "Familie",
                         facts: ["Oma lebt in der Nähe, iPhone-Hilfe per Telefon", "Nächster Arzttermin Donnerstag, 11:00"],

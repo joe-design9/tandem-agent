@@ -43,29 +43,33 @@ struct MemoryView: View {
     // MARK: Profil
 
     private var profileCard: some View {
-        GlassCard(tint: store.accent, glow: true, padding: 18) {
+        GlassCard(tint: VicePalette.magenta, glow: true, padding: 18) {
             HStack(alignment: .top, spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(colors: [store.accent, store.accentChoice.deep],
+                        .fill(LinearGradient(colors: [VicePalette.gold, VicePalette.coral, VicePalette.magenta],
                                              startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 58, height: 58)
+                        .shadow(color: VicePalette.magenta.opacity(0.65), radius: 14)
                     Text(initials)
-                        .font(.system(size: 21, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.black.opacity(0.75))
+                        .font(.system(size: 21, weight: .black, design: .rounded))
+                        .foregroundStyle(Color.black.opacity(0.78))
                 }
                 .overlay {
-                    Circle().strokeBorder(Color.white.opacity(0.4), lineWidth: 1)
+                    Circle().strokeBorder(Color.white.opacity(0.45), lineWidth: 1)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(store.userName)
-                            .font(.system(size: 19, weight: .heavy, design: .rounded))
+                            .font(.system(size: 19, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
                         if store.isFounder {
                             Image(systemName: "crown.fill")
-                                .font(.system(size: 11))
-                                .foregroundStyle(store.accent)
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(VicePalette.gold)
+                                .padding(4)
+                                .background { Circle().fill(VicePalette.gold.opacity(0.18)) }
                         }
                     }
                     Text("\(store.city) · \(store.role)")
@@ -73,10 +77,10 @@ struct MemoryView: View {
                         .foregroundStyle(.secondary)
                     HStack(spacing: 5) {
                         if store.isFounder {
-                            StatusBadge(text: "VIP ACCESS", tint: store.accent, icon: "sparkles")
+                            StatusBadge(text: "VIP ACCESS", tint: VicePalette.gold, icon: "sparkles")
                         }
                         StatusBadge(text: store.hasUnlocked ? "PREVIEW AKTIV" : "GESPERRT",
-                                    tint: store.hasUnlocked ? Color(red: 0.50, green: 0.92, blue: 0.74) : .secondary,
+                                    tint: store.hasUnlocked ? Color(red: 0.40, green: 1.00, blue: 0.74) : .secondary,
                                     icon: "lock.fill")
                     }
                     .padding(.top, 2)

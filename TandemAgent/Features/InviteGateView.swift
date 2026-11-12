@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Der Gatekeeper: Tandem startet als geschlossene Research Preview.
-/// Ohne eingelösten Invite-Key bleibt alles hinter Glas.
+/// Ohne eingelösten Invite-Key bleibt die Stadt hinter Glas.
 struct InviteGateView: View {
     @Environment(TandemStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
@@ -16,23 +16,35 @@ struct InviteGateView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                Spacer(minLength: 18)
+            VStack(spacing: 18) {
+                Spacer(minLength: 12)
                 emblem
 
-                VStack(spacing: 6) {
+                VStack(spacing: 7) {
                     Text("TANDEM")
-                        .font(.system(size: 36, weight: .heavy, design: .rounded))
-                        .tracking(8)
+                        .font(.system(size: 38, weight: .black, design: .rounded))
+                        .tracking(9)
                         .foregroundStyle(
-                            LinearGradient(colors: [.white, store.accent.opacity(0.9)],
+                            LinearGradient(colors: [.white,
+                                                    VicePalette.gold,
+                                                    VicePalette.coral,
+                                                    VicePalette.magenta],
                                            startPoint: .top, endPoint: .bottom)
                         )
-                        .shadow(color: store.accent.opacity(0.5), radius: 18)
-                    Text("RESEARCH PREVIEW")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .tracking(4)
-                        .foregroundStyle(.secondary)
+                        .shadow(color: VicePalette.magenta.opacity(0.70), radius: 22)
+                    Text("LEONIDA RESEARCH PREVIEW")
+                        .font(.system(size: 9.5, weight: .black, design: .rounded))
+                        .tracking(3.2)
+                        .foregroundStyle(VicePalette.cyan)
+                        .shadow(color: VicePalette.cyan.opacity(0.85), radius: 9)
+                    HStack(spacing: 5) {
+                        Image(systemName: "sun.horizon.fill").font(.system(size: 8, weight: .bold))
+                        Text("VICE CITY · INVITE ONLY")
+                            .font(.system(size: 8.5, weight: .black, design: .rounded))
+                            .tracking(1.6)
+                    }
+                    .foregroundStyle(VicePalette.gold.opacity(0.85))
+                    .padding(.top, 2)
                 }
 
                 gateCard
@@ -44,10 +56,10 @@ struct InviteGateView: View {
                     Haptics.tap()
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "key.horizontal.fill").font(.system(size: 10))
-                        Text("Wie komme ich an einen Key?").font(.system(size: 12, weight: .medium, design: .rounded))
+                        Image(systemName: "key.horizontal.fill").font(.system(size: 10, weight: .bold))
+                        Text("Wie komme ich nach Leonida?").font(.system(size: 12, weight: .semibold, design: .rounded))
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VicePalette.cyan.opacity(0.9))
                 }
                 .buttonStyle(.plain)
 
@@ -56,15 +68,15 @@ struct InviteGateView: View {
                         .font(.system(size: 11.5, design: .rounded))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 28)
+                        .padding(.horizontal, 22)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                Spacer(minLength: 16)
+                Spacer(minLength: 12)
 
                 HStack(spacing: 6) {
                     Image(systemName: "lock.shield.fill").font(.system(size: 9))
-                    Text("Lokal geprüft · kein Konto nötig · v1.0.0")
+                    Text("Lokal geprüft · kein Konto nötig · v1.1.0 Leonida")
                         .font(.system(size: 10, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(.tertiary)
@@ -83,65 +95,55 @@ struct InviteGateView: View {
     private var emblem: some View {
         ZStack {
             Circle()
-                .fill(RadialGradient(colors: [store.accent.opacity(0.45), .clear],
-                                     center: .center, startRadius: 4, endRadius: 92))
-                .frame(width: 184, height: 184)
-                .blur(radius: glow ? 6 : 0)
-                .scaleEffect(glow ? 1.04 : 0.96)
+                .fill(RadialGradient(colors: [VicePalette.hotPink.opacity(0.50),
+                                              VicePalette.violet.opacity(0.28),
+                                              .clear],
+                                     center: .center, startRadius: 4, endRadius: 104))
+                .frame(width: 204, height: 204)
+                .blur(radius: glow ? 9 : 0)
+                .scaleEffect(glow ? 1.05 : 0.95)
 
             Circle()
                 .strokeBorder(
                     AngularGradient(colors: [
-                        store.accent.opacity(0.9),
-                        Color.white.opacity(0.05),
-                        store.accentChoice.deep.opacity(0.8),
-                        Color.white.opacity(0.05),
-                        store.accent.opacity(0.9),
+                        VicePalette.cyan.opacity(0.9),
+                        Color.white.opacity(0.04),
+                        VicePalette.magenta.opacity(0.85),
+                        Color.white.opacity(0.04),
+                        VicePalette.gold.opacity(0.7),
+                        VicePalette.cyan.opacity(0.9),
                     ], center: .center),
-                    lineWidth: 1.5
+                    lineWidth: 1.4
                 )
-                .frame(width: 118, height: 118)
+                .frame(width: 198, height: 198)
                 .rotationEffect(.degrees(glow ? 360 : 0))
                 .animation(.linear(duration: 18).repeatForever(autoreverses: false), value: glow)
 
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .fill(.clear)
-                .glassEffect(.regular.tint(store.accent.opacity(0.22)),
-                             in: RoundedRectangle(cornerRadius: 34, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 34, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(colors: [.white.opacity(0.5), .white.opacity(0.05)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing),
-                            lineWidth: 1
-                        )
-                }
-                .frame(width: 92, height: 92)
-                .overlay {
-                    Image(systemName: "person.line.dotted.person.fill")
-                        .font(.system(size: 34, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.92))
-                        .shadow(color: store.accent.opacity(0.6), radius: 10)
-                }
-                .shadow(color: store.accent.opacity(0.35), radius: 24, y: 8)
+            ViceEmblem()
+                .frame(width: 178, height: 178)
+                .shadow(color: VicePalette.magenta.opacity(0.55), radius: 20)
         }
-        .frame(height: 176)
+        .frame(height: 200)
     }
 
     private var gateCard: some View {
-        GlassCard(tint: store.accent, glow: true, padding: 20) {
+        GlassCard(tint: VicePalette.magenta, glow: true, padding: 20) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top, spacing: 12) {
                     ZStack {
-                        Circle().fill(store.accent.opacity(0.16)).frame(width: 38, height: 38)
+                        Circle()
+                            .fill(LinearGradient(colors: [VicePalette.magenta, VicePalette.coral],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 38, height: 38)
+                            .shadow(color: VicePalette.magenta.opacity(0.7), radius: 10)
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(store.accent)
+                            .font(.system(size: 15, weight: .black))
+                            .foregroundStyle(Color.black.opacity(0.80))
                     }
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Invite erforderlich")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                        Text("Tandem ist eine geschlossene Preview. Löse deinen Key ein, dann gehört der Agent dir.")
+                            .font(.system(size: 17, weight: .black, design: .rounded))
+                        Text("Tandem ist eine geschlossene Preview. Löse deinen Key ein, dann gehört dir der Agent — und die Stadt.")
                             .font(.system(size: 12.5, design: .rounded))
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -150,11 +152,13 @@ struct InviteGateView: View {
 
                 HStack(spacing: 8) {
                     Image(systemName: "key.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(store.accent.opacity(0.9))
-                    TextField("TANDEM-XXXX-XXXX", text: $key)
-                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(VicePalette.cyan)
+                        .shadow(color: VicePalette.cyan.opacity(0.9), radius: 7)
+                    TextField("VICE-XXXX-XXXX", text: $key)
+                        .font(.system(size: 16, weight: .bold, design: .monospaced))
                         .tracking(1.2)
+                        .foregroundStyle(.white)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .submitLabel(.go)
@@ -180,21 +184,22 @@ struct InviteGateView: View {
                 .padding(.vertical, 14)
                 .background {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(colorScheme == .light ? 0.55 : 0.07))
+                        .fill(Color.black.opacity(colorScheme == .light ? 0.06 : 0.28))
                         .overlay {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(error == nil ? Color.white.opacity(0.18) : Color(red: 1, green: 0.45, blue: 0.52),
-                                              lineWidth: 1)
+                                .strokeBorder(fieldBorder, lineWidth: 1.3)
                         }
+                        .shadow(color: error == nil ? VicePalette.cyan.opacity(0.35) : Color(red: 1, green: 0.30, blue: 0.45).opacity(0.5),
+                                radius: 12)
                 }
                 .modifier(ShakeEffect(shakes: shake))
 
                 if let error {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10))
-                        Text(error).font(.system(size: 11.5, weight: .medium, design: .rounded))
+                        Text(error).font(.system(size: 11.5, weight: .semibold, design: .rounded))
                     }
-                    .foregroundStyle(Color(red: 1.0, green: 0.52, blue: 0.58))
+                    .foregroundStyle(Color(red: 1.0, green: 0.45, blue: 0.58))
                     .transition(.opacity)
                 }
 
@@ -205,11 +210,11 @@ struct InviteGateView: View {
                         } else {
                             Image(systemName: "lock.open.fill")
                         }
-                        Text(unlocking ? "Freischalten…" : "Zugang freischalten")
+                        Text(unlocking ? "Stadt wird geöffnet…" : "Vice City betreten")
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(PrimaryGlassButtonStyle(tint: store.accent))
+                .buttonStyle(PrimaryGlassButtonStyle(tint: VicePalette.magenta))
                 .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || unlocking)
 
                 HStack(spacing: 5) {
@@ -221,6 +226,15 @@ struct InviteGateView: View {
             }
         }
         .padding(.horizontal, 2)
+    }
+
+    private var fieldBorder: LinearGradient {
+        error == nil
+            ? LinearGradient(colors: [VicePalette.cyan, VicePalette.magenta, VicePalette.gold],
+                             startPoint: .topLeading, endPoint: .bottomTrailing)
+            : LinearGradient(colors: [Color(red: 1, green: 0.30, blue: 0.45),
+                                      Color(red: 1, green: 0.30, blue: 0.45)],
+                             startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     private func attempt() {

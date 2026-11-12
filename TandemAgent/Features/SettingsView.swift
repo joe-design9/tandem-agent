@@ -35,24 +35,27 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
                     }
 
-                    section("Liquid Glass", icon: "circle.hexagongrid.fill") {
+                    section("Vice City Design", icon: "sun.horizon.fill") {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 9) {
                                 ForEach(GlacierTheme.allCases) { theme in
                                     themeTile(theme)
                                 }
                             }
-                            Divider().opacity(0.15)
-                            HStack(spacing: 10) {
+                            Text(store.themeChoice.subtitle)
+                                .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                                .foregroundStyle(VicePalette.gold.opacity(0.85))
+                            NeonDivider()
+                            HStack(spacing: 8) {
                                 ForEach(AccentChoice.allCases) { accent in
                                     accentDot(accent)
                                 }
-                                Spacer()
-                                Text(store.accentChoice.title)
-                                    .font(.system(size: 10.5, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.secondary)
+                                Spacer(minLength: 0)
                             }
-                            Divider().opacity(0.15)
+                            Text("Akzent: \(store.accentChoice.title)")
+                                .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary)
+                            NeonDivider()
                             HStack(spacing: 4) {
                                 ForEach(Appearance.allCases) { appearance in
                                     appearanceButton(appearance)
@@ -151,9 +154,9 @@ struct SettingsView: View {
     }
 
     private var version: String {
-        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        return "\(short) (\(build))"
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "2"
+        return "\(short) (\(build)) · Leonida"
     }
 
     private var backboneCard: some View {
@@ -270,21 +273,22 @@ struct SettingsView: View {
                         .fill(previewGradient(theme))
                         .frame(height: 56)
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(Color.white.opacity(0.16))
+                        .fill(Color.white.opacity(0.18))
                         .frame(width: 34, height: 12)
                         .overlay {
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.35), lineWidth: 0.6)
+                                .strokeBorder(Color.white.opacity(0.40), lineWidth: 0.6)
                         }
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(selected ? store.accent : Color.white.opacity(0.10),
+                        .strokeBorder(selected ? VicePalette.cyan : Color.white.opacity(0.10),
                                       lineWidth: selected ? 1.6 : 0.8)
                 }
+                .shadow(color: selected ? VicePalette.cyan.opacity(0.55) : .clear, radius: 8)
                 Text(theme.title)
-                    .font(.system(size: 9.5, weight: selected ? .bold : .medium, design: .rounded))
-                    .foregroundStyle(selected ? store.accent : .secondary)
+                    .font(.system(size: 9.5, weight: selected ? .black : .medium, design: .rounded))
+                    .foregroundStyle(selected ? VicePalette.cyan : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -295,6 +299,15 @@ struct SettingsView: View {
 
     private func previewGradient(_ theme: GlacierTheme) -> LinearGradient {
         switch theme {
+        case .electricVice:
+            return LinearGradient(stops: [
+                .init(color: Color(red: 0.16, green: 0.02, blue: 0.34), location: 0.0),
+                .init(color: Color(red: 0.86, green: 0.09, blue: 0.49), location: 0.42),
+                .init(color: VicePalette.coral, location: 0.62),
+                .init(color: VicePalette.gold, location: 0.74),
+                .init(color: Color(red: 0.10, green: 0.02, blue: 0.18), location: 0.78),
+                .init(color: Color(red: 0.05, green: 0.01, blue: 0.10), location: 1.0),
+            ], startPoint: .top, endPoint: .bottom)
         case .aurora:
             return LinearGradient(colors: [Color(red: 0.06, green: 0.07, blue: 0.22),
                                            Color(red: 0.18, green: 0.42, blue: 0.45),
@@ -323,17 +336,18 @@ struct SettingsView: View {
         } label: {
             Circle()
                 .fill(accent.gradient)
-                .frame(width: 24, height: 24)
+                .frame(width: 23, height: 23)
                 .overlay {
-                    Circle().strokeBorder(Color.white.opacity(selected ? 0.85 : 0.25), lineWidth: selected ? 2 : 0.8)
+                    Circle().strokeBorder(Color.white.opacity(selected ? 0.9 : 0.25), lineWidth: selected ? 2 : 0.8)
                 }
                 .overlay {
                     if selected {
                         Image(systemName: "checkmark")
                             .font(.system(size: 9, weight: .heavy))
-                            .foregroundStyle(.black.opacity(0.65))
+                            .foregroundStyle(.black.opacity(0.70))
                     }
                 }
+                .shadow(color: selected ? accent.color.opacity(0.8) : .clear, radius: 7)
         }
         .buttonStyle(.plain)
     }

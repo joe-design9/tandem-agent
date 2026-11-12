@@ -146,12 +146,18 @@ struct ChatView: View {
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(.clear)
-                    .glassEffect(.regular.tint(Color.white.opacity(0.05)),
+                    .glassEffect(.regular.tint(VicePalette.violet.opacity(0.22)),
                                  in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8)
+                            .strokeBorder(
+                                LinearGradient(colors: [VicePalette.magenta.opacity(0.55),
+                                                        VicePalette.cyan.opacity(0.40)],
+                                               startPoint: .topLeading, endPoint: .bottomTrailing),
+                                lineWidth: 0.9
+                            )
                     }
+                    .shadow(color: VicePalette.magenta.opacity(0.22), radius: 14, y: 4)
             }
         }
     }
@@ -166,8 +172,8 @@ struct ChatView: View {
                     .foregroundStyle(tool.state == .done ? store.accent : Color(red: 1, green: 0.5, blue: 0.55))
             }
             Text(tool.name)
-                .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(store.accent.opacity(0.95))
+                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .foregroundStyle(VicePalette.cyan.opacity(0.95))
             if let result = tool.result {
                 Text("·")
                     .foregroundStyle(.tertiary)
@@ -181,8 +187,8 @@ struct ChatView: View {
         .padding(.vertical, 5)
         .background {
             Capsule()
-                .fill(store.accent.opacity(0.09))
-                .overlay { Capsule().strokeBorder(store.accent.opacity(0.22), lineWidth: 0.7) }
+                .fill(VicePalette.cyan.opacity(0.12))
+                .overlay { Capsule().strokeBorder(VicePalette.cyan.opacity(0.30), lineWidth: 0.7) }
         }
     }
 
@@ -253,9 +259,12 @@ struct ChatView: View {
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 7) {
-                Text("Frag mich irgendwas.")
-                    .font(.system(size: 25, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                Text("FRAG MICH IRGENDWAS.")
+                    .font(.system(size: 25, weight: .black, design: .rounded))
+                    .tracking(0.8)
+                    .foregroundStyle(LinearGradient(colors: [.white, VicePalette.gold, VicePalette.magenta],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .shadow(color: VicePalette.magenta.opacity(0.5), radius: 14)
                 Text(store.isSimulator
                      ? "Der Simulator antwortet offline und liest dabei dein Briefing, deine Freigaben und dein Gedächtnis. Für echte Modelle: Einstellungen → Backbone."
                      : "Verbunden mit \(store.engineLabel). Antworten nutzen Briefing, Freigaben und Gedächtnis als Kontext.")
@@ -354,11 +363,16 @@ struct ChatView: View {
                 .background {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(.clear)
-                        .glassEffect(.regular.tint(Color.white.opacity(0.08)),
+                        .glassEffect(.regular.tint(VicePalette.violet.opacity(0.28)),
                                      in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.8)
+                                .strokeBorder(
+                                    LinearGradient(colors: [VicePalette.cyan.opacity(0.55),
+                                                            VicePalette.magenta.opacity(0.45)],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    lineWidth: 0.9
+                                )
                         }
                 }
 

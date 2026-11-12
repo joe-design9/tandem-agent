@@ -73,34 +73,42 @@ struct ApprovalsView: View {
     }
 
     private var ruleCard: some View {
-        GlassCard(tint: store.accent, glow: true, padding: 16) {
-            HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    Circle().fill(store.accent.opacity(0.16)).frame(width: 38, height: 38)
-                    Image(systemName: "hand.raised.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(store.accent)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Nichts geht ohne dein Ja raus")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Text("Tandem bereitet vor und wartet. E-Mails, Zahlungen, Kalenderänderungen und Löschungen laufen erst nach deiner Freigabe — jede Entscheidung landet im Protokoll.")
-                        .font(.system(size: 11.5, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+        GlassCard(tint: VicePalette.magenta, glow: true, padding: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                ViceBadge(text: "Vice City Agent Protocol", tint: VicePalette.magenta, icon: "shield.lefthalf.filled")
+                HStack(alignment: .top, spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(LinearGradient(colors: [VicePalette.cyan, VicePalette.magenta],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 38, height: 38)
+                            .shadow(color: VicePalette.cyan.opacity(0.6), radius: 10)
+                        Image(systemName: "hand.raised.fill")
+                            .font(.system(size: 15, weight: .black))
+                            .foregroundStyle(Color.black.opacity(0.8))
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Nichts geht ohne dein Ja raus")
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                        Text("Tandem bereitet vor und wartet. E-Mails, Zahlungen, Kalenderänderungen und Löschungen laufen erst nach deiner Freigabe — jede Entscheidung landet im Protokoll.")
+                            .font(.system(size: 11.5, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         }
     }
 
     private var emptyState: some View {
-        GlassCard(tint: nil, glow: false, padding: 22) {
+        GlassCard(tint: VicePalette.cyan, glow: true, padding: 22) {
             VStack(spacing: 10) {
                 Image(systemName: "checkmark.circle")
                     .font(.system(size: 30, weight: .light))
-                    .foregroundStyle(store.accent)
+                    .foregroundStyle(VicePalette.cyan)
+                    .shadow(color: VicePalette.cyan.opacity(0.8), radius: 12)
                 Text("Alles erledigt")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                 Text("Keine offenen Freigaben. Tandem meldet sich, sobald etwas deine Entscheidung braucht.")
                     .font(.system(size: 11.5, design: .rounded))
                     .foregroundStyle(.secondary)
@@ -114,32 +122,43 @@ struct ApprovalsView: View {
         let isExpanded = expanded.contains(approval.id)
         return VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(approval.kind.tint.opacity(0.16))
-                            .frame(width: 34, height: 34)
-                        Image(systemName: approval.kind.icon)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(approval.kind.tint)
-                    }
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(approval.kind.title.uppercased())
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .tracking(1.1)
-                            .foregroundStyle(.secondary)
-                        Text(RelativeTime.string(from: approval.createdAt))
-                            .font(.system(size: 9.5, design: .rounded))
-                            .foregroundStyle(.tertiary)
-                    }
+                HStack(spacing: 6) {
+                    ViceBadge(text: "Vice City Agent Protocol", tint: VicePalette.magenta, icon: "shield.lefthalf.filled")
                     Spacer(minLength: 0)
                     StatusBadge(text: approval.risk.title, tint: approval.risk.color,
                                 icon: approval.risk == .high ? "exclamationmark.triangle.fill" : "shield.lefthalf.filled")
                 }
 
+                HStack(spacing: 8) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(approval.kind.tint.opacity(0.20))
+                            .frame(width: 34, height: 34)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .strokeBorder(approval.kind.tint.opacity(0.55), lineWidth: 0.8)
+                            }
+                        Image(systemName: approval.kind.icon)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(approval.kind.tint)
+                    }
+                    .shadow(color: approval.kind.tint.opacity(0.45), radius: 8)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(approval.kind.title.uppercased())
+                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .tracking(1.2)
+                            .foregroundStyle(approval.kind.tint)
+                        Text(RelativeTime.string(from: approval.createdAt))
+                            .font(.system(size: 9.5, design: .rounded))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer(minLength: 0)
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(approval.title)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(approval.summary)
                         .font(.system(size: 12, design: .rounded))
@@ -230,8 +249,8 @@ struct ApprovalsView: View {
                         rejectTarget = approval
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(red: 1.0, green: 0.52, blue: 0.58))
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(VicePalette.hotPink)
                             .padding(.horizontal, 13)
                             .padding(.vertical, 12)
                     }
@@ -243,16 +262,26 @@ struct ApprovalsView: View {
         .background {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(.clear)
-                .glassEffect(.regular.tint(approval.kind.tint.opacity(0.10)),
+                .glassEffect(.regular.tint(approval.kind.tint.opacity(0.14)),
                              in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(LinearGradient(colors: [Color.white.opacity(0.10), .clear],
+                                             startPoint: .top, endPoint: .center))
+                        .blendMode(.plusLighter)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .strokeBorder(
-                            LinearGradient(colors: [Color.white.opacity(0.28), Color.white.opacity(0.04)],
+                            LinearGradient(colors: [VicePalette.magenta.opacity(0.75),
+                                                    approval.kind.tint.opacity(0.55),
+                                                    VicePalette.cyan.opacity(0.65)],
                                            startPoint: .topLeading, endPoint: .bottomTrailing),
-                            lineWidth: 1
+                            lineWidth: 1.2
                         )
                 }
+                .shadow(color: approval.kind.tint.opacity(0.30), radius: 20, y: 6)
         }
     }
 
@@ -286,16 +315,16 @@ struct ApprovalsView: View {
             if let body = approval.body {
                 Text(body)
                     .font(.system(size: 11.5, design: .rounded))
-                    .foregroundStyle(.primary.opacity(0.86))
+                    .foregroundStyle(.primary.opacity(0.90))
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.black.opacity(0.18))
+                            .fill(Color.black.opacity(0.28))
                             .overlay {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8)
+                                    .strokeBorder(VicePalette.cyan.opacity(0.25), lineWidth: 0.8)
                             }
                     }
             }
@@ -307,8 +336,8 @@ struct ApprovalsView: View {
             Image(systemName: approval.state == .executed ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .font(.system(size: 14))
                 .foregroundStyle(approval.state == .executed
-                                 ? Color(red: 0.50, green: 0.92, blue: 0.74)
-                                 : Color(red: 1.0, green: 0.52, blue: 0.58))
+                                 ? Color(red: 0.40, green: 1.00, blue: 0.74)
+                                 : VicePalette.hotPink)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 1) {
                 Text(approval.title)

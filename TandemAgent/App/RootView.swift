@@ -25,6 +25,10 @@ struct RootView: View {
             .animation(.easeInOut(duration: 0.45), value: store.hasUnlocked)
             .animation(.easeInOut(duration: 0.35), value: store.hasOnboarded)
 
+            // CRT-Feeling: Vignette und feine Scanlines über allem.
+            ViceOverlay(strength: isLight ? 0.32 : 1)
+                .zIndex(2)
+
             if let toast = store.toast {
                 ToastView(toast: toast)
                     .padding(.bottom, 96)

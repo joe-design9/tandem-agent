@@ -1,6 +1,6 @@
 # Tandem — Agent
 
-**Ein proaktiver persönlicher Agent für iPhone. Liquid Glass, lokales Gedächtnis, Freigaben statt Autopilot.**
+**Ein proaktiver persönlicher Agent für iPhone — jetzt in der Leonida Edition: Liquid Glass im Vice-City-Sonnenuntergang, lokales Gedächtnis, Freigaben statt Autopilot.**
 
 Tandem ist kein Chatfenster mit Extras. Es ist ein Agent, der im Hintergrund mitdenkt: morgens ein Briefing, über den Tag Scans von Postfach, Kalender, Repos und Gerät, und für alles Riskante eine fertige Entscheidung auf dem Tisch — die du mit einem Tipp freigibst oder ablehnst.
 
@@ -21,20 +21,22 @@ Tandem ist kein Chatfenster mit Extras. Es ist ein Agent, der im Hintergrund mit
 | **Invite-Keys** | Founder-Zugänge plus Generator: Codes erzeugen, kopieren, teilen, als eingelöst markieren, löschen. |
 | **Multi-Provider** | Anthropic Claude, OpenAI, DeepSeek, OpenRouter und jeder OpenAI-kompatible eigene Endpoint. Keys im iOS-Keychain. |
 | **Simulator** | Läuft **ohne API-Key** und ohne Netz: liest den echten App-Zustand (Freigaben, Aufgaben, Briefing, Gedächtnis) und antwortet daraus. Direkt nach dem Sideloading benutzbar. |
-| **Liquid Glass** | `glassEffect`-Karten, Frosted-Pills, Lichtkanten, atmender Glow. Drei Kulissen: Deep Aurora, Neon Vice, Dark Titanium. Hell/Dunkel/System, vier Akzente, Haptik. |
+| **Liquid Glass** | Electric Vice: animierter Sonnenuntergang, Perspektiv-Grid, Palmen, Neon-Partikel. Karten mit Magenta-Cyan-Kante und atmendem Glow. Vier Kulissen (Electric Vice, Neon Vice, Deep Aurora, Titanium), acht Akzente, Hell/Dunkel/System, Haptik. |
 
 ---
 
 ## Invite-Key
 
-Beim ersten Start steht der Gatekeeper: *Tandem Research Preview — Invite Required*.
+Beim ersten Start steht der Gatekeeper: *Tandem — Leonida Research Preview*.
 
 - **Founder-Keys** (schalten zusätzlich das Founder-/VIP-Badge frei):
   - `JOEL-VIP`
-  - `TANDEM-2026`
-  - `DUET-FOUNDER`
+  - `VICE-VIP`
   - `LEONIDA-DEV`
-- **Generierte Keys**: Format `TNDM-XXXX-XXXX`, erzeugt in *Mehr → Invite Keys teilen*. Jeder Code schaltet eine Installation frei.
+  - `OCEAN-DRIVE`
+  - `TANDEM-2026`
+  - `DUET-FOUNDER` (aus 1.0.0 weiter gültig)
+- **Generierte Keys**: Format `VICE-XXXX-XXXX` oder `TNDM-XXXX-XXXX`, erzeugt in *Mehr → Invite Keys teilen*. Jeder Code schaltet eine Installation frei.
 - Eingabe ist case-insensitive, der Status wird dauerhaft gespeichert.
 
 > Die Prüfung passiert lokal im Gerät. Das ist ein Preview-Gate für Freunde — keine Server-Authentifizierung. Wer die IPA auseinandernimmt, findet die Keys; für eine echte Beta gehört ein Backend davor.
@@ -43,7 +45,7 @@ Beim ersten Start steht der Gatekeeper: *Tandem Research Preview — Invite Requ
 
 ## Installation (Sideloadly / AltStore)
 
-1. `TandemAgent-1.0.0.ipa` aus den [Releases](https://github.com/joe-design9/tandem-agent/releases/latest) laden.
+1. `TandemAgent-1.1.0.ipa` aus den [Releases](https://github.com/joe-design9/tandem-agent/releases/latest) laden.
 2. In Sideloadly (oder AltStore) mit der eigenen Apple-ID signieren und aufs iPhone schieben.
 3. App öffnen → Invite-Key eintragen → loslegen.
 
@@ -71,7 +73,7 @@ xcodebuild -project TandemAgent.xcodeproj -scheme TandemAgent \
   -derivedDataPath build \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 mkdir Payload && cp -R build/Build/Products/Release-iphoneos/Tandem.app Payload/
-zip -qry TandemAgent-1.0.0.ipa Payload
+zip -qry TandemAgent-1.1.0.ipa Payload
 ```
 
 ---
@@ -110,6 +112,14 @@ TandemAgent/
 ---
 
 ## Changelog
+
+### 1.1.0 — 12. November 2026 · Vice City / Leonida Edition
+- Neue Standard-Kulisse **Electric Vice**: animierter Sonnenuntergang, laufendes Perspektiv-Grid, Skyline, Palmen, Sternenstaub, Neon-Partikel, Scanlines
+- GTA-6-Farbraum durch die ganze App: Cyan, Magenta, Coral, Gold auf Mitternachtsviolett; Neon-Kanten und Glow auf allen Karten
+- Gatekeeper als **Leonida Research Preview** mit Palmen-Neon-Emblem und glühendem Key-Feld
+- **Leonida Morning Dispatch**, **Weazel-News-Band**, **ViceNet Monitor**, „Vice City Agent Protocol“ auf Freigaben
+- Invite-Codes im Vice-Style (`VICE-XXXX-XXXX` / `TNDM-XXXX-XXXX`), VIP-Founder-Karte mit Neon-Palme
+- Neues App-Icon (Vice-Sunset, Palme, Grid) und Version 1.1.0 (Build 2)
 
 ### 1.0.0 — 11. November 2026
 - Erste vollständige Version: Briefing, Freigaben, Aufgaben, Chat, Gedächtnis, Einstellungen

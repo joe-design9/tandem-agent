@@ -3,7 +3,7 @@ import UIKit
 
 /// Der Invite-Generator: Tandem ist eine geschlossene Preview, also
 /// verteilt Joel die Zugänge selbst — ein Tipp erzeugt einen Code,
-/// ein zweiter teilt ihn.
+/// ein zweiter teilt ihn. Codes kommen im Vice-Style.
 struct InviteKeysView: View {
     @Environment(TandemStore.self) private var store
     @State private var justCopied: String?
@@ -17,7 +17,7 @@ struct InviteKeysView: View {
                 SectionHeader(title: "Deine Codes", subtitle: nil, icon: "key.horizontal.fill",
                               trailing: "\(store.inviteKeys.count)")
                 if store.inviteKeys.isEmpty {
-                    GlassCard(tint: nil, glow: false) {
+                    GlassCard(tint: VicePalette.cyan, glow: false) {
                         Text("Noch keine Codes. Erzeuge den ersten — er gilt für genau eine Installation.")
                             .font(.system(size: 11.5, design: .rounded))
                             .foregroundStyle(.secondary)
@@ -30,26 +30,29 @@ struct InviteKeysView: View {
                     }
                 }
 
-                SectionHeader(title: "Founder-Zugänge", subtitle: nil, icon: "crown.fill", trailing: "immer gültig")
-                GlassCard(tint: nil, glow: false, padding: 8) {
+                SectionHeader(title: "Leonida Master-Keys", subtitle: nil, icon: "crown.fill", trailing: "immer gültig")
+                GlassCard(tint: VicePalette.gold, glow: false, padding: 8) {
                     VStack(spacing: 0) {
                         ForEach(InviteKeys.masterKeys, id: \.self) { master in
                             HStack(spacing: 9) {
                                 Image(systemName: "crown.fill")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(store.accent)
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(VicePalette.gold)
+                                    .shadow(color: VicePalette.gold.opacity(0.8), radius: 5)
                                     .frame(width: 16)
                                 Text(master)
-                                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(.white.opacity(0.92))
                                 Spacer()
                                 Text(master == store.unlockedKey ? "dein Key" : "gültig")
-                                    .font(.system(size: 9.5, design: .rounded))
-                                    .foregroundStyle(.tertiary)
+                                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(master == store.unlockedKey ? VicePalette.cyan : .tertiary)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 9)
                             if master != InviteKeys.masterKeys.last {
-                                Rectangle().fill(Color.white.opacity(0.06)).frame(height: 0.6)
+                                NeonDivider()
+                                    .opacity(0.5)
                             }
                         }
                     }
@@ -71,29 +74,36 @@ struct InviteKeysView: View {
     }
 
     private var founderCard: some View {
-        GlassCard(tint: store.accent, glow: true, padding: 18) {
-            VStack(alignment: .leading, spacing: 12) {
+        GlassCard(tint: VicePalette.magenta, glow: true, padding: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 12) {
                     ZStack {
                         Circle()
-                            .fill(store.accent.gradient)
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "crown.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Color.black.opacity(0.75))
+                            .fill(LinearGradient(colors: [VicePalette.gold, VicePalette.coral, VicePalette.magenta],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 48, height: 48)
+                            .shadow(color: VicePalette.magenta.opacity(0.75), radius: 14)
+                        PalmGlyph(tint: Color(red: 0.05, green: 0.01, blue: 0.10), rim: nil)
+                            .frame(width: 26, height: 30)
                     }
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text("Founder Access")
-                                .font(.system(size: 16, weight: .heavy, design: .rounded))
-                            StatusBadge(text: "VIP", tint: store.accent, icon: "sparkles")
+                            Text("VIP FOUNDER")
+                                .font(.system(size: 16, weight: .black, design: .rounded))
+                                .tracking(1.2)
+                                .foregroundStyle(LinearGradient(colors: [.white, VicePalette.gold],
+                                                                startPoint: .top, endPoint: .bottom))
+                                .shadow(color: VicePalette.gold.opacity(0.55), radius: 10)
+                            StatusBadge(text: "Leonida", tint: VicePalette.cyan, icon: "sun.horizon.fill")
                         }
-                        Text("Du bist eingelöst mit \(store.unlockedKey.isEmpty ? "—" : store.unlockedKey)")
-                            .font(.system(size: 10.5, design: .rounded))
+                        Text("Eingelöst mit \(store.unlockedKey.isEmpty ? "—" : store.unlockedKey)")
+                            .font(.system(size: 10.5, weight: .medium, design: .rounded))
                             .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
                 }
+
+                NeonDivider()
 
                 HStack(spacing: 18) {
                     stat(value: "\(store.inviteKeys.count)", label: "erzeugt")
@@ -107,10 +117,12 @@ struct InviteKeysView: View {
     private func stat(value: String, label: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(value)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: 19, weight: .black, design: .rounded))
                 .monospacedDigit()
-            Text(label)
-                .font(.system(size: 9.5, design: .rounded))
+                .foregroundStyle(.white)
+            Text(label.uppercased())
+                .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                .tracking(0.8)
                 .foregroundStyle(.secondary)
         }
     }
@@ -122,24 +134,26 @@ struct InviteKeysView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")
-                Text("Neuen Invite-Key erzeugen")
+                Text("Neuen Vice-Key erzeugen")
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(PrimaryGlassButtonStyle(tint: store.accent))
+        .buttonStyle(PrimaryGlassButtonStyle(tint: VicePalette.magenta))
     }
 
     private func keyRow(_ key: InviteKey) -> some View {
-        GlassCard(tint: key.redeemed ? nil : store.accent, glow: !key.redeemed, padding: 13) {
+        GlassCard(tint: key.redeemed ? nil : VicePalette.cyan, glow: !key.redeemed, padding: 13) {
             HStack(spacing: 11) {
                 Image(systemName: key.redeemed ? "checkmark.seal.fill" : "key.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(key.redeemed ? Color(red: 0.50, green: 0.92, blue: 0.74) : store.accent)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(key.redeemed ? Color(red: 0.40, green: 1.00, blue: 0.74) : VicePalette.cyan)
+                    .shadow(color: (key.redeemed ? VicePalette.mint : VicePalette.cyan).opacity(0.7), radius: 6)
                     .frame(width: 20)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(key.code)
-                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 12.5, weight: .bold, design: .monospaced))
                         .tracking(0.6)
+                        .foregroundStyle(.white)
                     HStack(spacing: 5) {
                         Text(key.redeemed ? "eingelöst" : "offen")
                         Text("·")
@@ -154,19 +168,19 @@ struct InviteKeysView: View {
                     copy(key.code)
                 } label: {
                     Image(systemName: justCopied == key.code ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(justCopied == key.code ? store.accent : .secondary)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(justCopied == key.code ? VicePalette.cyan : .secondary)
                         .frame(width: 30, height: 30)
-                        .background { Circle().fill(Color.white.opacity(0.07)) }
+                        .background { Circle().fill(Color.white.opacity(0.08)) }
                 }
                 .buttonStyle(.plain)
 
                 ShareLink(item: shareText(for: key.code)) {
                     Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.secondary)
                         .frame(width: 30, height: 30)
-                        .background { Circle().fill(Color.white.opacity(0.07)) }
+                        .background { Circle().fill(Color.white.opacity(0.08)) }
                 }
                 .buttonStyle(.plain)
 
@@ -198,7 +212,7 @@ struct InviteKeysView: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.secondary)
                         .frame(width: 30, height: 30)
-                        .background { Circle().fill(Color.white.opacity(0.07)) }
+                        .background { Circle().fill(Color.white.opacity(0.08)) }
                 }
             }
         }
@@ -211,7 +225,7 @@ struct InviteKeysView: View {
         So kommst du rein:
         1. Tandem installieren (Sideloadly / AltStore, IPA von github.com/joe-design9/tandem-agent/releases)
         2. App öffnen, Key eintragen
-        3. Fertig — der Agent läuft sofort, auch ohne API-Key.
+        3. Fertig — der Agent läuft sofort, auch ohne API-Key. Willkommen in Leonida.
 
         Der Key gilt für eine Installation. Behalte ihn für dich.
         """
