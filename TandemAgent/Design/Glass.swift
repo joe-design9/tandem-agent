@@ -514,7 +514,6 @@ enum ViceScene {
         guard w > 8, h > 8 else { return }
 
         let horizon = h * 0.60
-        let t = CGFloat(time)
 
         // Himmel
         let skyStops: [Gradient.Stop] = light

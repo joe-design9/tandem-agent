@@ -46,7 +46,7 @@ struct InviteKeysView: View {
                                 Spacer()
                                 Text(master == store.unlockedKey ? "dein Key" : "gültig")
                                     .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(master == store.unlockedKey ? VicePalette.cyan : .tertiary)
+                                    .foregroundStyle(master == store.unlockedKey ? VicePalette.cyan : .secondary)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 9)
