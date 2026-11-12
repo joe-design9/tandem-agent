@@ -45,6 +45,47 @@ enum AutonomyLevel: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Absichten
+
+/// Was der Agent aus einem Ziel liest. Diese Absicht bestimmt, welche
+/// Werkzeuge er plant — nicht ein einzelnes Stichwort im Satz.
+enum AgentIntent: String, Codable, CaseIterable {
+    case newsScan
+    case repoAudit
+    case mailTriage
+    case briefing
+    case research
+    case calendar
+    case memory
+    case generic
+
+    var title: String {
+        switch self {
+        case .newsScan: return "News-Überwachung"
+        case .repoAudit: return "Repo-Audit"
+        case .mailTriage: return "Mail-Triage"
+        case .briefing: return "Briefing"
+        case .research: return "Recherche"
+        case .calendar: return "Kalender"
+        case .memory: return "Gedächtnis"
+        case .generic: return "Auftrag"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .newsScan: return "newspaper.fill"
+        case .repoAudit: return "chevron.left.forwardslash.chevron.right"
+        case .mailTriage: return "envelope.fill"
+        case .briefing: return "sun.horizon.fill"
+        case .research: return "magnifyingglass"
+        case .calendar: return "calendar"
+        case .memory: return "brain.head.profile"
+        case .generic: return "bolt.horizontal.fill"
+        }
+    }
+}
+
 // MARK: - Freigaben
 
 enum Risk: String, Codable, CaseIterable {
@@ -145,6 +186,44 @@ struct ApprovalRequest: Identifiable, Codable, Hashable {
 
 // MARK: - Aufgaben
 
+/// Ein Protokolleintrag des Laufs: was der Agent wann getan hat und
+/// welches Werkzeug dabei im Spiel war.
+struct AgentLogEntry: Identifiable, Codable, Hashable {
+    enum Level: String, Codable {
+        case info
+        case tool
+        case result
+        case approval
+        case warning
+
+        var icon: String {
+            switch self {
+            case .info: return "circle.fill"
+            case .tool: return "wrench.and.screwdriver.fill"
+            case .result: return "checkmark"
+            case .approval: return "hand.raised.fill"
+            case .warning: return "exclamationmark.triangle.fill"
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .info: return Color(red: 0.66, green: 0.68, blue: 0.78)
+            case .tool: return VicePalette.cyan
+            case .result: return Color(red: 0.40, green: 0.94, blue: 0.76)
+            case .approval: return VicePalette.gold
+            case .warning: return VicePalette.coral
+            }
+        }
+    }
+
+    var id: UUID = UUID()
+    var date: Date = Date()
+    var level: Level = .info
+    var text: String
+    var tool: String?
+}
+
 struct TaskStep: Identifiable, Codable, Hashable {
     enum State: String, Codable {
         case pending
@@ -156,7 +235,9 @@ struct TaskStep: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var title: String
     var detail: String
+    var tool: String?
     var state: State = .pending
+    var result: String?
 }
 
 struct AgentTask: Identifiable, Codable, Hashable {
@@ -177,6 +258,16 @@ struct AgentTask: Identifiable, Codable, Hashable {
             }
         }
 
+        var shortTitle: String {
+            switch self {
+            case .queued: return "Wartet"
+            case .running: return "Läuft"
+            case .paused: return "Pausiert"
+            case .done: return "Fertig"
+            case .cancelled: return "Abbruch"
+            }
+        }
+
         var color: Color {
             switch self {
             case .queued: return Color(red: 0.62, green: 0.62, blue: 1.00)
@@ -192,8 +283,10 @@ struct AgentTask: Identifiable, Codable, Hashable {
     var title: String
     var goal: String
     var autonomy: AutonomyLevel
+    var intent: AgentIntent = .generic
     var status: Status = .queued
     var steps: [TaskStep] = []
+    var log: [AgentLogEntry] = []
     var createdAt: Date = Date()
     var finishedAt: Date?
     var summary: String?
@@ -207,6 +300,14 @@ struct AgentTask: Identifiable, Codable, Hashable {
 
     var currentStep: TaskStep? {
         steps.first { $0.state == .running } ?? steps.first { $0.state == .pending }
+    }
+
+    var completedCount: Int {
+        steps.filter { $0.state == .done || $0.state == .failed }.count
+    }
+
+    var activeTools: [String] {
+        steps.compactMap { $0.tool }
     }
 }
 
@@ -224,6 +325,7 @@ struct AuditEvent: Identifiable, Codable, Hashable {
         case approval
         case task
         case scan
+        case tool
         case system
         case memory
 
@@ -232,6 +334,7 @@ struct AuditEvent: Identifiable, Codable, Hashable {
             case .approval: return VicePalette.gold
             case .task: return VicePalette.cyan
             case .scan: return Color(red: 0.55, green: 0.75, blue: 1.00)
+            case .tool: return Color(red: 0.62, green: 0.52, blue: 1.00)
             case .system: return Color(red: 0.70, green: 0.72, blue: 0.80)
             case .memory: return Color(red: 0.72, green: 0.60, blue: 1.00)
             }

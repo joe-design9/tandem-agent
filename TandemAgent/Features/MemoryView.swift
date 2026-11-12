@@ -207,13 +207,15 @@ struct MemoryView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(.clear)
-                                .glassEffect(.regular.tint(Color.white.opacity(0.05)),
-                                             in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .fill(.ultraThinMaterial)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8)
+                                        .fill(Color.white.opacity(0.02))
                                 }
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
                         }
                         .opacity(service.status == .off ? 0.6 : 1)
                     }

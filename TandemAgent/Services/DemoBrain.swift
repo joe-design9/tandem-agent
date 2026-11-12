@@ -1,127 +1,125 @@
 import Foundation
 
-/// Der Offline-Simulator: antwortet ohne API-Key, damit Tandem direkt
-/// nach dem Sideloading etwas kann. Er liest den echten App-Zustand
-/// (Freigaben, Aufgaben, Briefing, Gedächtnis) und formuliert daraus
-/// eine Antwort — plus Tool-Pills, damit die Chat-Oberfläche zeigt,
-/// wie ein echter Lauf aussieht.
-struct DemoContext {
-    var userName: String
-    var city: String
-    var today: String
-    var weather: String
-    var weatherDetail: String
-    var temperature: String
-    var agenda: [BriefingItem]
-    var todos: [String]
-    var pendingApprovals: [ApprovalRequest]
-    var runningTasks: [AgentTask]
-    var memoryHighlights: [String]
-    var unreadMails: Int
-    var repos: [String]
-    var nightNote: String
-}
-
+/// Der Offline-Agent: antwortet ohne API-Key, damit Tandem direkt nach
+/// dem Sideloading etwas kann. Er liest den echten App-Zustand und baut
+/// daraus einen Lauf mit Werkzeugen — plus Antwort, die den Kontext
+/// kennt (Köln, Entwickler, GTA-6-Hub, Playtests).
 enum DemoBrain {
     struct Plan {
         var tools: [(name: String, label: String, result: String)]
         var text: String
         var card: ChatCard?
+        var task: (title: String, goal: String)?
+
+        init(tools: [(name: String, label: String, result: String)] = [],
+             text: String,
+             card: ChatCard? = nil,
+             task: (title: String, goal: String)? = nil) {
+            self.tools = tools
+            self.text = text
+            self.card = card
+            self.task = task
+        }
     }
 
-    static func plan(for input: String, context: DemoContext) -> Plan {
+    static func plan(for input: String, context: AgentContext) -> Plan {
         let text = input.lowercased()
         func has(_ words: String...) -> Bool { words.contains { text.contains($0) } }
 
-        if has("hallo", "hi ", "hey", "moin", "servus") && text.count < 24 {
-            return Plan(tools: [], text: greeting(context))
+        if has("hallo", "hi ", "hey", "moin", "servus", "guten morgen") && text.count < 26 {
+            return Plan(text: greeting(context))
         }
-        if has("wer bist du", "was bist du", "was kannst du", "hilfe", "how do you work") {
-            return Plan(tools: [], text: capabilities(context))
+        if has("wer bist du", "was bist du", "was kannst du", "hilfe", "wie arbeitest du", "how do you work") {
+            return Plan(tools: [("memory.sync", "Kontext laden", "Profil gefunden")],
+                        text: capabilities(context))
         }
-        if has("invite", "key", "einlad", "code", "zugang") {
-            return Plan(tools: [("vault.read", "Vault prüfen", "Preview-Zugang aktiv")], text: inviteAnswer(context))
+        if has("invite", "key", "einlad", "zugang", "clearance") {
+            return Plan(tools: [("memory.sync", "Zugang prüfen", "Clearance aktiv")],
+                        text: inviteAnswer(context))
         }
         if has("wetter", "regen", "temperatur", "jacke", "schirm") {
-            return Plan(tools: [("weather.lookup", "Wetter laden", context.temperature)],
+            return Plan(tools: [("weather.read", "Wetter lesen", context.temperature)],
                         text: weatherAnswer(context))
         }
+        if has("gta", "rockstar", "leonida", "news", "newswire", "meldung") {
+            return newsAnswer(input, context: context)
+        }
         if has("mail", "e-mail", "email", "postfach", "posteingang", "inbox") {
-            return Plan(tools: [("mail.search", "Postfach scannen", "\(context.unreadMails) ungelesen"),
-                                ("mail.classify", "Wichtigkeit sortieren", "1 dringend")],
-                        text: mailAnswer(context), card: mailCard(context))
+            return mailAnswer(input, context: context)
         }
-        if has("freigabe", "approval", "genehmig", "bestätig") {
-            return Plan(tools: [("approvals.list", "Freigaben laden", "\(context.pendingApprovals.count) offen")],
-                        text: approvalAnswer(context), card: approvalCard(context))
+        if has("freigabe", "approval", "genehmig", "bestätig", "warten") {
+            return approvalAnswer(context)
         }
-        if has("aufgabe", "task", "delegier", "erledig", "hintergrund") {
-            return Plan(tools: [("tasks.list", "Aufgaben lesen", "\(context.runningTasks.count) aktiv")],
-                        text: taskAnswer(context))
+        if has("aufgabe", "task", "delegier", "hintergrund", "agenten", "läuft") {
+            return taskAnswer(input, context: context)
         }
-        if has("github", "repo", "commit", "ci", "pull request", "pipeline") {
-            return Plan(tools: [("github.repos", "Repos scannen", "\(context.repos.count) Repos"),
-                                ("github.runs", "CI prüfen", "alle grün")],
-                        text: githubAnswer(context))
+        if has("github", "repo", "commit", "ci", "pull request", "pipeline", "build") {
+            return githubAnswer(input, context: context)
         }
-        if has("termin", "kalender", "heute", "tag", "plan", "briefing", "morgen") {
-            return Plan(tools: [("calendar.events", "Kalender lesen", "\(context.agenda.count) Termine"),
-                                ("weather.lookup", "Wetter laden", context.temperature)],
-                        text: dayAnswer(context))
+        if has("termin", "kalender", "heute", "tag", "plan", "briefing", "morgen", "woche") {
+            return dayAnswer(input, context: context)
         }
         if has("gedächtnis", "gedaechtnis", "erinner", "memory", "weißt du", "weisst du") {
-            return Plan(tools: [("memory.search", "Gedächtnis durchsuchen", "\(context.memoryHighlights.count) Treffer")],
-                        text: memoryAnswer(context))
+            return memoryAnswer(context)
         }
-        if has("danke", "thanks", "top", "nice", "geil") {
-            return Plan(tools: [], text: "Immer. Sag Bescheid, wenn ich den nächsten Schritt direkt vorbereiten soll — ich halte dir alles zur Freigabe hin. ✨")
+        if has("danke", "thanks", "top", "nice", "geil", "stark", "mega") {
+            return Plan(text: "Immer. Wenn du willst, starte ich den nächsten Schritt direkt — ich halte dir alles zur Freigabe hin. ✨")
         }
-        return Plan(tools: [("memory.search", "Kontext laden", "Profil gefunden")],
-                    text: fallbackAnswer(context, input: input))
+        return fallback(input, context: context)
     }
 
-    // MARK: Antworten
+    // MARK: - Delegation
 
-    private static func greeting(_ c: DemoContext) -> String {
+    private static func createsTask(_ text: String) -> Bool {
+        ["überwach", "überwache", "monitor", "kümmere", "kümmer", "delegier", "starte", "richte ein",
+         "prüf mal", "prüf meine", "schick", "erstelle", "sammel", "fass zusammen", "übernimm"].contains {
+            text.contains($0)
+        }
+    }
+
+    private static func taskCard(_ title: String, _ subtitle: String) -> ChatCard {
+        ChatCard(kind: .task, title: title, subtitle: subtitle, icon: "bolt.horizontal.fill",
+                 actionTitle: "Im Aufgaben-Tab ansehen", approvalID: nil, taskID: nil)
+    }
+
+    // MARK: - Antworten
+
+    private static func greeting(_ c: AgentContext) -> String {
         """
-        Hey \(c.userName) — ich bin **Tandem**, dein proaktiver Agent. Ich schaue im Hintergrund nach deinem Tag, deinen Mails und deinen Aufgaben und lege dir alles als fertige Entscheidung hin.
+        Hey \(c.userName) — Tandem ist wach. Ich bin kein Chatfenster, ich arbeite in Runden: **beobachten → planen → Werkzeug aufrufen → dir vorlegen**.
 
         Gerade im Blick:
-        - **\(c.pendingApprovals.count) Freigaben** warten auf dich
-        - **\(c.runningTasks.count) Aufgaben** laufen im Hintergrund
-        - **\(c.unreadMails) ungelesene Mails**, davon eine, die heute raus sollte
+        - **\(c.pendingApprovals.count) Freigaben** liegen auf deinem Tisch
+        - **\(c.runningTasks.count) Aufgaben** laufen mit Protokoll
+        - **\(c.unreadMails) ungelesene Mails**, eine davon sollte heute raus
 
-        Frag mich nach dem Tag, deinen Mails oder „delegier das“ — ich bereite vor, du entscheidest.
+        Sag mir ein Ziel — „überwache die GTA-6-News“ reicht — und ich starte einen Lauf.
         """
     }
 
-    private static func capabilities(_ c: DemoContext) -> String {
+    private static func capabilities(_ c: AgentContext) -> String {
         """
-        Ich bin ein **Agent**, kein Chatfenster: Ich arbeite in Runden aus Beobachten → Vorbereiten → Freigeben.
+        So arbeite ich, in drei Lagen:
 
-        | Fähigkeit | Was das heißt |
+        | Lage | Was passiert |
         | --- | --- |
-        | Briefing | Wetter, Termine, Todos und Nachtaktivität in einer Karte |
-        | Hintergrund-Scans | Postfach, Kalender, GitHub, Gerät — alle 15 Minuten |
-        | Freigaben | E-Mails, Zahlungen, Kalendereinträge: erst nach deinem Ja |
-        | Aufgaben | Mehrstufige Läufe mit Protokoll und Fortschritt |
-        | Gedächtnis | Was ich über dich weiß, jederzeit lesbar und löschbar |
+        | **Absicht** | Ich lese dein Ziel und bestimme, worum es wirklich geht — Mail, Repo, News, Kalender, Recherche. |
+        | **Plan** | Ich zerlege es in Schritte und binde jeden an ein Werkzeug: `web.scan`, `repo.check`, `mail.triage`, `memory.sync`. |
+        | **Ausführung** | Ich rufe die Werkzeuge der Reihe nach auf und schreibe alles ins Protokoll. Riskantes landet als Freigabe bei dir. |
 
-        \(c.pendingApprovals.isEmpty ? "Aktuell liegt nichts auf dem Tisch." : "Auf dem Tisch liegen gerade \(c.pendingApprovals.count) Freigaben — die würde ich zuerst anschauen.")
+        Aktuell: \(c.runningTasks.count) Aufgaben laufen, \(c.pendingApprovals.count) Freigaben warten. Ein Ziel genügt, ich übernehme den Rest.
         """
     }
 
-    private static func inviteAnswer(_ c: DemoContext) -> String {
+    private static func inviteAnswer(_ c: AgentContext) -> String {
         """
-        Tandem läuft als **Research Preview** — der Zugang hängt an einem Invite-Key, nicht an einem App-Store-Account. Dein Key ist eingelöst, deshalb bist du drin.
+        Tandem läuft als **Research Preview** — der Zugang hängt an einem Invite-Key, nicht an einem App-Store-Account. Deine Clearance ist aktiv.
 
-        Wenn du jemanden einladen willst: **Einstellungen → Invite Keys teilen**. Dort erzeugst du mit einem Tipp einen Code wie `TNDM-4K7Q-9WZ2`. Jeder Code schaltet genau eine Installation frei, du siehst im selben Screen, welche schon eingelöst sind.
-
-        Deine Founder-Keys bleiben dauerhaft gültig.
+        Für Freunde: **Mehr → Invite Keys teilen**. Ein Tipp erzeugt einen Code wie `TNDM-4K7Q-9WZ2`; jeder Code schaltet genau eine Installation frei. Die Founder-Keys (`JOEL-VIP`, `VICE-VIP`, `LEONIDA-DEV`, `OCEAN-DRIVE`) bleiben dauerhaft gültig.
         """
     }
 
-    private static func weatherAnswer(_ c: DemoContext) -> String {
+    private static func weatherAnswer(_ c: AgentContext) -> String {
         """
         \(c.temperature) in \(c.city) — \(c.weather.lowercased()).
 
@@ -131,11 +129,39 @@ enum DemoBrain {
         """
     }
 
-    private static func mailAnswer(_ c: DemoContext) -> String {
+    private static func newsAnswer(_ input: String, context c: AgentContext) -> Plan {
+        let task = createsTask(input.lowercased())
+        let tools: [(name: String, label: String, result: String)] = [
+            ("web.scan", "Newswire, Portale, Hub", "4 Quellen geprüft"),
+            ("news.rank", "Relevanz gewichten", "2 relevant"),
+            ("brief.compose", "Kurzbriefing", "3 Zeilen"),
+        ]
+        var answer = """
+        GTA-6-Lage, Stand jetzt: **nichts Verschoben, nichts Neuertes beim Release-Fenster**. Zwei Portale melden dieselbe Meldung, eines hat sie von gestern abgeschrieben — das habe ich rausgefiltert.
+
+        Was für dich zählt:
+        - Release-Fenster unverändert, kein neues Statement von Rockstar
+        - Dein gta6-hub ist grün, der letzte Build lief durch
+        - Eine neue Meldung betrifft Trailer-Analysen, keine harten Fakten
+
+        Ich habe die Meldungen nach Datum und Quelle gewichtet, nicht nach Lautstärke.
+        """
+        if task {
+            answer += "\n\nIch habe das als **Dauerlauf** angelegt: *GTA-6-News überwachen*. Ab jetzt melde ich nur, was sich wirklich ändert — Protokoll siehst du im Aufgaben-Tab."
+        }
+        return Plan(tools: tools,
+                    text: answer,
+                    card: task ? taskCard("GTA-6-News überwachen", "Läuft mit web.scan → news.rank → brief.compose") : nil,
+                    task: task ? ("GTA-6-News überwachen", "Überwache die GTA-6-News und melde nur, was sich wirklich ändert") : nil)
+    }
+
+    private static func mailAnswer(_ input: String, context c: AgentContext) -> Plan {
         let urgent = c.pendingApprovals.first { $0.kind == .email }
+        let task = createsTask(input.lowercased())
         let lead = urgent.map { "Ich habe **\(c.unreadMails) ungelesene Mails** durchgesehen. Eine ist wichtig: *\($0.subject ?? $0.title)*." }
             ?? "Ich habe **\(c.unreadMails) ungelesene Mails** durchgesehen — nichts, was heute brennt."
-        return """
+
+        var answer = """
         \(lead)
 
         | Absender | Thema | Einschätzung |
@@ -144,83 +170,119 @@ enum DemoBrain {
         | team@playtest-vault.dev | Review angefragt | heute erledigen |
         | notifications@github.com | 3 CI-Läufe | automatisch abgehakt |
 
-        \(urgent == nil ? "Soll ich die Mails in einer Aufgabe zusammenfassen?" : "Den Antwortentwurf habe ich fertig — er liegt als Freigabe bei dir, du musst nur noch ja sagen.")
+        \(urgent == nil ? "Soll ich die Mails als Aufgabe zusammenfassen?" : "Den Antwortentwurf habe ich fertig — er liegt als Freigabe bei dir, gesendet wird nichts ohne dein Ja.")
         """
+        if task {
+            answer += "\n\nDer **Mail-Triage-Lauf** ist gestartet: scannen → einordnen → Entwurf → Freigabe."
+        }
+        return Plan(tools: [("mail.triage", "Postfach scannen", "\(c.unreadMails) ungelesen"),
+                            ("mail.rank", "Wichtigkeit sortieren", "1 dringend"),
+                            ("mail.draft", "Antwort entwerfen", "Entwurf steht")],
+                    text: answer,
+                    card: urgent.map { urgentCard($0) } ?? (task ? taskCard("Postfach sortieren", "Triage mit Entwürfen, Versand nur nach Freigabe") : nil),
+                    task: task ? ("Postfach sortieren", "Sortiere mein Postfach und entwerfe Antworten für alles Dringende") : nil)
     }
 
-    private static func mailCard(_ c: DemoContext) -> ChatCard? {
-        guard let approval = c.pendingApprovals.first(where: { $0.kind == .email }) else { return nil }
-        return ChatCard(kind: .approval,
-                        title: "Antwort an \(approval.recipient ?? "den Absender")",
-                        subtitle: approval.subject ?? approval.title,
-                        icon: "envelope.fill",
-                        actionTitle: "Freigabe ansehen",
-                        approvalID: approval.id)
+    private static func urgentCard(_ approval: ApprovalRequest) -> ChatCard {
+        ChatCard(kind: .approval,
+                 title: "Antwort an \(approval.recipient ?? "den Absender")",
+                 subtitle: approval.subject ?? approval.title,
+                 icon: "envelope.fill",
+                 actionTitle: "Freigabe ansehen",
+                 approvalID: approval.id,
+                 taskID: nil)
     }
 
-    private static func approvalAnswer(_ c: DemoContext) -> String {
+    private static func approvalAnswer(_ c: AgentContext) -> Plan {
         guard !c.pendingApprovals.isEmpty else {
-            return "Aktuell liegt **nichts** auf deinem Tisch. Alle vorbereiteten Aktionen sind erledigt oder abgelehnt — ich melde mich, sobald etwas Neues dazukommt."
+            return Plan(tools: [("approval.queue", "Tisch prüfen", "nichts offen")],
+                        text: "Aktuell liegt **nichts** auf deinem Tisch. Alle vorbereiteten Aktionen sind entschieden — ich melde mich, sobald etwas Neues dazukommt.")
         }
         let rows = c.pendingApprovals.map { approval in
             "| \(approval.kind.title) | \(approval.title) | \(approval.risk.title) |"
         }.joined(separator: "\n")
-        return """
-        **\(c.pendingApprovals.count) Aktionen** sind vorbereitet und warten auf dein Ja. Nichts davon ist rausgegangen.
+        return Plan(tools: [("approval.queue", "Freigaben laden", "\(c.pendingApprovals.count) offen")],
+                    text: """
+                    **\(c.pendingApprovals.count) Aktionen** sind vorbereitet und warten auf dein Ja. Nichts davon ist rausgegangen.
 
-        | Art | Aktion | Risiko |
-        | --- | --- | --- |
-        \(rows)
+                    | Art | Aktion | Risiko |
+                    | --- | --- | --- |
+                    \(rows)
 
-        Der wichtigste Punkt: *\(c.pendingApprovals[0].title)*. Sag „freigeben“, dann schicke ich es raus — oder „ablehnen“, dann bleibt es liegen.
-        """
+                    Der wichtigste Punkt: *\(c.pendingApprovals[0].title)*. Sag „freigeben“, dann geht es raus — oder „ablehnen“, dann bleibt es liegen.
+                    """,
+                    card: ChatCard(kind: .approval,
+                                   title: c.pendingApprovals[0].title,
+                                   subtitle: c.pendingApprovals[0].summary,
+                                   icon: c.pendingApprovals[0].kind.icon,
+                                   actionTitle: "Freigaben öffnen",
+                                   approvalID: c.pendingApprovals[0].id,
+                                   taskID: nil))
     }
 
-    private static func approvalCard(_ c: DemoContext) -> ChatCard? {
-        guard let first = c.pendingApprovals.first else { return nil }
-        return ChatCard(kind: .approval,
-                        title: first.title,
-                        subtitle: first.summary,
-                        icon: first.kind.icon,
-                        actionTitle: "Freigaben öffnen",
-                        approvalID: first.id)
-    }
+    private static func taskAnswer(_ input: String, context c: AgentContext) -> Plan {
+        if createsTask(input.lowercased()) && !c.runningTasks.contains(where: { $0.goal.localizedCaseInsensitiveContains(input) }) {
+            // Ein neues Ziel — der Planner übernimmt, der Chat legt es an.
+            let plan = TaskPlanner.plan(for: input)
+            return Plan(tools: [("plan.build", "Ziel zerlegen", "\(plan.steps.count) Schritte")],
+                        text: """
+                        Ziel gelesen, Absicht **\(plan.intent.title)**. Ich würde so vorgehen:
 
-    private static func taskAnswer(_ c: DemoContext) -> String {
+                        \(plan.steps.enumerated().map { "- **\($0.offset + 1). \($0.element.title)** · `\($0.element.tool ?? "agent.step")`" }.joined(separator: "\n"))
+
+                        Ich starte den Lauf — Fortschritt und jedes Werkzeug stehen im Aufgaben-Tab.
+                        """,
+                        card: taskCard(plan.title, "\(plan.steps.count) Schritte, Protokoll live"),
+                        task: (plan.title, input))
+        }
+
         guard !c.runningTasks.isEmpty else {
-            return "Im Moment läuft keine Hintergrundaufgabe. Sag mir ein Ziel — *„prüf meine Repos auf rote CI“* — und ich zerlege es in Schritte, die du im Aufgaben-Tab live siehst."
+            return Plan(text: "Im Moment läuft keine Aufgabe. Sag mir ein Ziel — *„prüf meine Repos auf rote CI“* — und ich zerlege es in Schritte mit Werkzeugen.")
         }
         let rows = c.runningTasks.map { task in
-            "| \(task.title) | \(task.status.title) | \(Int(task.progress * 100)) % |"
+            "| \(task.title) | \(task.currentStep?.title ?? task.status.title) | \(Int(task.progress * 100)) % |"
         }.joined(separator: "\n")
-        return """
-        **\(c.runningTasks.count) Aufgaben** sind unterwegs:
+        return Plan(tools: [("plan.build", "Läufe lesen", "\(c.runningTasks.count) aktiv")],
+                    text: """
+                    **\(c.runningTasks.count) Aufgaben** sind unterwegs:
 
-        | Aufgabe | Status | Fortschritt |
-        | --- | --- | --- |
-        \(rows)
+                    | Aufgabe | Aktueller Schritt | Fortschritt |
+                    | --- | --- | --- |
+                    \(rows)
 
-        Der laufende Schritt steht im Aufgaben-Tab unter der jeweiligen Karte. Sobald etwas deine Freigabe braucht, halte ich an und frage — Autonomie endet bei riskanten Aktionen.
-        """
+                    Jeder Schritt hängt an einem Werkzeug, jedes Ergebnis steht im Protokoll. Sobald etwas deine Freigabe braucht, halte ich an — Autonomie endet bei riskanten Aktionen.
+                    """
+        )
     }
 
-    private static func githubAnswer(_ c: DemoContext) -> String {
+    private static func githubAnswer(_ input: String, context c: AgentContext) -> Plan {
+        let task = createsTask(input.lowercased())
         let rows = c.repos.map { "| \($0) | grün | 0 offen |" }.joined(separator: "\n")
-        return """
+        var answer = """
         Ich habe deine Repos gescannt — nichts Rotes:
 
         | Repo | CI | Offene Issues |
         | --- | --- | --- |
         \(rows)
 
-        Bei **gta6-hub** ist der letzte Release-Build durchgelaufen. Wenn du willst, schreibe ich für das nächste Release schon die Changelog-Zeilen aus den Commits und lege sie dir als Freigabe hin.
+        Bei **gta6-hub** ist der letzte Release-Build durchgelaufen, `tandem-agent` baut in 1 min 12 s. Wenn du willst, schreibe ich aus den Commits schon die Changelog-Zeilen und lege sie dir als Freigabe hin.
         """
+        if task {
+            answer += "\n\nDer **CI-Audit** läuft jetzt als Aufgabe über alle vier Repos."
+        }
+        return Plan(tools: [("repo.check", "Repos scannen", "\(c.repos.count) Repos"),
+                            ("ci.inspect", "CI prüfen", "12 Läufe, 0 rot"),
+                            ("result.synthesis", "Ergebnis prüfen", "alles grün")],
+                    text: answer,
+                    card: task ? taskCard("CI-Audit über alle Repos", "repo.check → ci.inspect → Synthese") : nil,
+                    task: task ? ("CI-Audit über alle Repos", "Prüfe meine GitHub CI Pipelines und sage mir, was rot ist") : nil)
     }
 
-    private static func dayAnswer(_ c: DemoContext) -> String {
+    private static func dayAnswer(_ input: String, context c: AgentContext) -> Plan {
         let lines = c.agenda.map { "- **\($0.time)** — \($0.title)\($0.detail.isEmpty ? "" : " · \($0.detail)")" }.joined(separator: "\n")
         let todos = c.todos.prefix(3).map { "- \($0)" }.joined(separator: "\n")
-        return """
+        let task = createsTask(input.lowercased()) && input.lowercased().contains("briefing")
+        var answer = """
         **\(c.today)**
 
         \(c.temperature) · \(c.weather)
@@ -232,27 +294,43 @@ enum DemoBrain {
 
         \(c.nightNote)
         """
+        if task {
+            answer += "\n\nIch baue das gerade als **Morgen-Briefing** neu — Kalender, Postfach und Wetter in einem Durchlauf."
+        }
+        return Plan(tools: [("calendar.read", "Kalender lesen", "\(c.agenda.count) Termine"),
+                            ("weather.read", "Wetter laden", c.temperature),
+                            ("brief.compose", "Briefing schreiben", "4 Punkte")],
+                    text: answer,
+                    task: task ? ("Morgen-Briefing zusammenstellen", "Stelle mein Morgen-Briefing aus Kalender, Postfach und Wetter zusammen") : nil)
     }
 
-    private static func memoryAnswer(_ c: DemoContext) -> String {
+    private static func memoryAnswer(_ c: AgentContext) -> Plan {
         let facts = c.memoryHighlights.map { "- \($0)" }.joined(separator: "\n")
-        return """
-        Das habe ich über dich gespeichert — und du kannst jeden Punkt im Gedächtnis-Tab ändern oder löschen:
+        return Plan(tools: [("memory.sync", "Gedächtnis durchsuchen", "\(c.memoryHighlights.count) Treffer")],
+                    text: """
+                    Das habe ich über dich gespeichert — jeder Punkt ist im Gedächtnis-Tab änderbar und löschbar:
 
-        \(facts)
+                    \(facts)
 
-        Neue Fakten übernehme ich nur, wenn sie im Gespräch auftauchen oder du sie bestätigst. Nichts davon geht an Dritte.
-        """
+                    Neue Fakten übernehme ich nur, wenn sie im Gespräch vorkommen oder du sie bestätigst. Nichts davon geht an Dritte.
+                    """)
     }
 
-    private static func fallbackAnswer(_ c: DemoContext, input: String) -> String {
-        let firstWord = input.split(separator: " ").first.map(String.init) ?? "das"
-        return """
-        Verstanden — ich habe **„\(input.trimmingCharacters(in: .whitespacesAndNewlines))“** im Kontext deines Tages gelesen.
+    private static func fallback(_ input: String, context c: AgentContext) -> Plan {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let plan = TaskPlanner.plan(for: trimmed.isEmpty ? "Auftrag" : trimmed)
+        return Plan(tools: [("plan.build", "Ziel analysieren", "Absicht: \(plan.intent.title)"),
+                            ("memory.sync", "Kontext laden", "Profil, Projekte, Kalender")],
+                    text: """
+                    Verstanden — ich habe **„\(String(trimmed.prefix(90)))“** gelesen und als Absicht **\(plan.intent.title)** eingeordnet.
 
-        Mein Vorschlag: Ich zerlege das in eine Aufgabe mit klaren Schritten, sammle die nötigen Infos aus Postfach, Kalender und Gedächtnis und lege dir am Ende genau eine Entscheidung hin. Wenn dabei etwas rausgeht — Mail, Zahlung, Kalender — stoppe ich vorher.
+                    Mein Vorschlag: Ich lege das als Aufgabe an, arbeite die Schritte mit echten Werkzeugen ab und lege dir am Ende genau eine Entscheidung hin. Wenn dabei etwas rausgeht — Mail, Zahlung, Kalender — stoppe ich vorher.
 
-        Soll ich das als Aufgabe starten? Dann steht „\(firstWord) …“ gleich im Aufgaben-Tab.
-        """
+                    \(plan.steps.enumerated().map { "- **\($0.offset + 1). \($0.element.title)** · `\($0.element.tool ?? "agent.step")`" }.joined(separator: "\n"))
+
+                    Sag „starte das“, dann läuft es im Aufgaben-Tab.
+                    """,
+                    card: nil,
+                    task: nil)
     }
 }

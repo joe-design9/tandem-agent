@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// Autonome Läufe mit sichtbaren Schritten, dazu Verlauf und Protokoll.
+/// Autonome Läufe: Status-Pille, Schritte mit Werkzeugnamen, aufklappbares
+/// Ausführungsprotokoll dazu. Verlauf und Protokoll liegen daneben.
 struct TasksView: View {
     @Environment(TandemStore.self) private var store
     @State private var segment = 0
     @State private var newTask = false
+    @State private var expandedLogs: Set<UUID> = []
 
     init(showNewTask: Bool = false) {
         _newTask = State(initialValue: showNewTask)
@@ -31,7 +33,7 @@ struct TasksView: View {
                 .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
-            .navigationTitle("Aufgaben")
+            .navigationTitle("Läufe")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -52,28 +54,15 @@ struct TasksView: View {
 
     private var header: some View {
         GlassCard(tint: store.accent, glow: true, padding: 16) {
-            VStack(alignment: .leading, spacing: 12) {
-                ViceBadge(text: "Vice City Agent Protocol", tint: VicePalette.magenta, icon: "bolt.fill")
+            VStack(alignment: .leading, spacing: 13) {
+                Insignia(text: "Agent Engine", tint: store.accent, icon: "point.3.connected.trianglepath.dotted")
                 HStack(spacing: 13) {
-                    ZStack {
-                        Circle().stroke(VicePalette.cyan.opacity(0.18), lineWidth: 4).frame(width: 52, height: 52)
-                        Circle()
-                            .trim(from: 0, to: runningProgress)
-                            .stroke(LinearGradient(colors: [VicePalette.cyan, VicePalette.magenta],
-                                                   startPoint: .topLeading, endPoint: .bottomTrailing),
-                                    style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                            .frame(width: 52, height: 52)
-                            .shadow(color: VicePalette.cyan.opacity(0.6), radius: 6)
-                        Text("\(store.runningTasks.count)")
-                            .font(.system(size: 18, weight: .black, design: .rounded))
-                            .monospacedDigit()
-                    }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(store.runningTasks.isEmpty ? "Alles abgearbeitet" : "\(store.runningTasks.count) Aufgaben laufen")
-                            .font(.system(size: 14, weight: .black, design: .rounded))
+                    ProgressRing(progress: runningProgress, tint: store.accent, size: 48, lineWidth: 3)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(store.runningTasks.isEmpty ? "Alles abgearbeitet" : "\(store.runningTasks.count) Läufe aktiv")
+                            .font(.system(size: 15, weight: .semibold))
                         Text("Autonomie: \(store.defaultAutonomy.title) · riskante Schritte halten immer an")
-                            .font(.system(size: 11, design: .rounded))
+                            .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -98,40 +87,34 @@ struct TasksView: View {
         .padding(4)
         .background {
             Capsule()
-                .fill(.clear)
-                .glassEffect(.regular.tint(VicePalette.violet.opacity(0.22)), in: Capsule())
-                .overlay {
-                    Capsule().strokeBorder(
-                        LinearGradient(colors: [VicePalette.magenta.opacity(0.55), VicePalette.cyan.opacity(0.45)],
-                                       startPoint: .leading, endPoint: .trailing),
-                        lineWidth: 0.9
-                    )
-                }
+                .fill(.ultraThinMaterial)
+                .overlay { Capsule().fill(Color.white.opacity(0.03)) }
+        }
+        .overlay {
+            Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 0.5)
         }
     }
 
     private func segmentButton(_ title: String, index: Int, count: Int) -> some View {
         Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { segment = index }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.88)) { segment = index }
             Haptics.selection()
         } label: {
             HStack(spacing: 4) {
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .medium))
                 Text("\(count)")
-                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                    .font(.system(size: 9.5, weight: .semibold))
                     .monospacedDigit()
-                    .opacity(0.7)
+                    .opacity(0.6)
             }
-            .foregroundStyle(segment == index ? Color.black.opacity(0.88) : .secondary)
+            .foregroundStyle(segment == index ? Color(red: 0.04, green: 0.03, blue: 0.06) : Color.white.opacity(0.55))
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
             .background {
                 if segment == index {
-                    Capsule()
-                        .fill(store.accent.gradient)
-                        .shadow(color: store.accent.opacity(0.7), radius: 10)
+                    Capsule().fill(store.accent)
                 }
             }
         }
@@ -143,16 +126,15 @@ struct TasksView: View {
     @ViewBuilder
     private var activeList: some View {
         if store.runningTasks.isEmpty {
-            GlassCard(tint: VicePalette.cyan, glow: false, padding: 22) {
+            GlassCard(tint: nil, glow: false, padding: 24) {
                 VStack(spacing: 10) {
-                    Image(systemName: "moon.zzz")
-                        .font(.system(size: 26, weight: .light))
-                        .foregroundStyle(VicePalette.cyan)
-                        .shadow(color: VicePalette.cyan.opacity(0.7), radius: 10)
-                    Text("Keine laufenden Aufgaben")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Text("Tippe auf + und gib ein Ziel an — Tandem zerlegt es in Schritte.")
-                        .font(.system(size: 11.5, design: .rounded))
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 24, weight: .light))
+                        .foregroundStyle(VicePalette.mint)
+                    Text("Kein Lauf aktiv")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Tippe auf + und gib ein Ziel an — der Agent zerlegt es und ruft die Werkzeuge selbst auf.")
+                        .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -166,29 +148,34 @@ struct TasksView: View {
     }
 
     private func taskCard(_ task: AgentTask) -> some View {
-        GlassCard(tint: task.status.color, glow: task.status == .running, padding: 16) {
-            VStack(alignment: .leading, spacing: 12) {
+        let tint = task.status.color
+        let logOpen = expandedLogs.contains(task.id)
+        return GlassCard(tint: tint, glow: task.status == .running, padding: 16) {
+            VStack(alignment: .leading, spacing: 13) {
                 HStack(alignment: .top, spacing: 10) {
-                    ProgressRing(progress: task.progress, tint: task.status.color, size: 42)
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text(task.title)
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(0.95))
                             .fixedSize(horizontal: false, vertical: true)
-                        HStack(spacing: 5) {
-                            StatusBadge(text: task.status.title.uppercased(), tint: task.status.color,
-                                        icon: task.status == .running ? "bolt.fill" : "pause.fill")
-                            Text(task.autonomy.title)
-                                .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                                .foregroundStyle(.tertiary)
+                        HStack(spacing: 6) {
+                            statusPill(task)
+                            Text(task.intent.title.uppercased())
+                                .font(.system(size: 8.5, weight: .heavy))
+                                .fontWidth(.condensed)
+                                .tracking(1.0)
+                                .foregroundStyle(Color.white.opacity(0.30))
                         }
                     }
                     Spacer(minLength: 0)
                     Text(RelativeTime.string(from: task.createdAt))
-                        .font(.system(size: 9.5, design: .rounded))
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(Color.white.opacity(0.28))
                 }
 
-                VStack(spacing: 7) {
+                MeterBar(progress: task.progress, tint: tint, height: 3)
+
+                VStack(spacing: 8) {
                     ForEach(task.steps.indices, id: \.self) { index in
                         stepRow(task.steps[index], index: index)
                     }
@@ -200,87 +187,184 @@ struct TasksView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: task.status == .paused ? "play.fill" : "pause.fill")
-                                .font(.system(size: 9, weight: .bold))
+                                .font(.system(size: 8, weight: .bold))
                             Text(task.status == .paused ? "Weiter" : "Pause")
                         }
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.80))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background { Capsule().fill(Color.white.opacity(0.10)) }
+                        .background { Capsule().fill(Color.white.opacity(0.06)) }
                     }
                     .buttonStyle(.plain)
 
                     Button {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
                             store.cancelTask(task.id)
                         }
                     } label: {
                         Text("Abbrechen")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color(red: 1.0, green: 0.52, blue: 0.58))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(VicePalette.coral.opacity(0.9))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .background { Capsule().fill(Color.white.opacity(0.06)) }
+                            .background { Capsule().fill(Color.white.opacity(0.04)) }
                     }
                     .buttonStyle(.plain)
 
-                    Spacer()
+                    Spacer(minLength: 0)
 
-                    if let step = task.currentStep {
-                        Text(step.title)
-                            .font(.system(size: 10, design: .rounded))
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                            if logOpen { expandedLogs.remove(task.id) } else { expandedLogs.insert(task.id) }
+                        }
+                        Haptics.tap()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "list.bullet.rectangle")
+                                .font(.system(size: 9, weight: .semibold))
+                            Text("Protokoll")
+                                .font(.system(size: 10.5, weight: .medium))
+                            Image(systemName: logOpen ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 7, weight: .bold))
+                        }
+                        .foregroundStyle(Color.white.opacity(0.50))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background { Capsule().fill(Color.white.opacity(0.05)) }
                     }
+                    .buttonStyle(.plain)
+                }
+
+                if logOpen {
+                    auditLog(task)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
         }
+    }
+
+    private func statusPill(_ task: AgentTask) -> some View {
+        HStack(spacing: 3) {
+            PulseDot(color: task.status.color, active: task.status == .running)
+            Text(task.status.shortTitle.uppercased())
+                .font(.system(size: 8.5, weight: .heavy))
+                .fontWidth(.condensed)
+                .tracking(1.0)
+        }
+        .foregroundStyle(task.status.color)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background {
+            Capsule().fill(task.status.color.opacity(0.10))
+        }
+        .overlay {
+            Capsule().strokeBorder(task.status.color.opacity(0.28), lineWidth: 0.5)
+        }
+        .animation(.easeInOut(duration: 0.5), value: task.status)
     }
 
     private func stepRow(_ step: TaskStep, index: Int) -> some View {
         HStack(alignment: .top, spacing: 9) {
             ZStack {
                 Circle()
-                    .fill(stepColor(step.state).opacity(0.16))
-                    .frame(width: 18, height: 18)
+                    .stroke(stepColor(step.state).opacity(step.state == .pending ? 0.20 : 0.55), lineWidth: 1)
+                    .frame(width: 16, height: 16)
                 if step.state == .running {
                     ProgressView().controlSize(.mini).tint(stepColor(step.state))
-                } else {
-                    Image(systemName: stepIcon(step.state))
-                        .font(.system(size: 8, weight: .bold))
+                } else if step.state == .done {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(stepColor(step.state))
+                } else if step.state == .failed {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 7, weight: .bold))
                         .foregroundStyle(stepColor(step.state))
                 }
             }
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(index + 1). \(step.title)")
-                    .font(.system(size: 11.5, weight: step.state == .running ? .semibold : .regular, design: .rounded))
-                    .foregroundStyle(step.state == .pending ? .secondary : .primary)
-                if !step.detail.isEmpty {
-                    Text(step.detail)
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(step.title)
+                        .font(.system(size: 11.5, weight: step.state == .running ? .semibold : .regular))
+                        .foregroundStyle(step.state == .pending ? Color.white.opacity(0.34) : Color.white.opacity(0.86))
+                    if let tool = step.tool {
+                        Text(tool)
+                            .font(.system(size: 8.5, design: .monospaced))
+                            .foregroundStyle(AgentTool.tint(for: tool).opacity(0.75))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background { Capsule().fill(AgentTool.tint(for: tool).opacity(0.08)) }
+                    }
+                    Spacer(minLength: 0)
                 }
+                Text(step.result ?? step.detail)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.white.opacity(step.result == nil ? 0.26 : 0.40))
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
         }
     }
 
     private func stepColor(_ state: TaskStep.State) -> Color {
         switch state {
-        case .done: return Color(red: 0.50, green: 0.92, blue: 0.74)
+        case .done: return VicePalette.mint
         case .running: return store.accent
-        case .failed: return Color(red: 1.0, green: 0.50, blue: 0.55)
-        case .pending: return .secondary
+        case .failed: return VicePalette.coral
+        case .pending: return Color.white.opacity(0.30)
         }
     }
 
-    private func stepIcon(_ state: TaskStep.State) -> String {
-        switch state {
-        case .done: return "checkmark"
-        case .running: return "arrow.right"
-        case .failed: return "xmark"
-        case .pending: return "circle.fill"
+    private func auditLog(_ task: AgentTask) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 5) {
+                Text("AUDIT LOG")
+                    .font(.system(size: 8.5, weight: .heavy))
+                    .fontWidth(.expanded)
+                    .tracking(1.6)
+                Spacer()
+                Text("\(task.log.count) Einträge · \(task.completedCount)/\(task.steps.count) Schritte")
+                    .font(.system(size: 8.5))
+            }
+            .foregroundStyle(Color.white.opacity(0.28))
+            .padding(.bottom, 8)
+
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(task.log.suffix(14)) { entry in
+                    HStack(alignment: .top, spacing: 7) {
+                        Text(RelativeTime.clock(entry.date))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(Color.white.opacity(0.24))
+                            .frame(width: 34, alignment: .leading)
+                        Image(systemName: entry.level.icon)
+                            .font(.system(size: 6.5))
+                            .foregroundStyle(entry.level.tint)
+                            .padding(.top, 3)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(entry.text)
+                                .font(.system(size: 10))
+                                .foregroundStyle(Color.white.opacity(0.62))
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let tool = entry.tool {
+                                Text(tool)
+                                    .font(.system(size: 8.5, design: .monospaced))
+                                    .foregroundStyle(AgentTool.tint(for: tool).opacity(0.55))
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+        .padding(11)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.black.opacity(0.22))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.5)
         }
     }
 
@@ -290,41 +374,42 @@ struct TasksView: View {
     private var historyList: some View {
         if store.history.isEmpty {
             GlassCard(tint: nil, glow: false, padding: 22) {
-                Text("Noch keine abgeschlossenen Aufgaben.")
-                    .font(.system(size: 12, design: .rounded))
+                Text("Noch keine abgeschlossenen Läufe.")
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
         } else {
-            VStack(spacing: 10) {
+            VStack(spacing: 9) {
                 ForEach(store.history) { task in
                     GlassCard(tint: nil, glow: false, padding: 14) {
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 7) {
                             HStack(spacing: 8) {
                                 Image(systemName: task.status == .done ? "checkmark.circle.fill" : "minus.circle.fill")
                                     .font(.system(size: 13))
                                     .foregroundStyle(task.status.color)
                                 Text(task.title)
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(Color.white.opacity(0.88))
                                 Spacer(minLength: 0)
                                 Text(task.finishedAt.map { RelativeTime.string(from: $0) } ?? "—")
-                                    .font(.system(size: 9.5, design: .rounded))
-                                    .foregroundStyle(.tertiary)
+                                    .font(.system(size: 9.5))
+                                    .foregroundStyle(Color.white.opacity(0.26))
                             }
                             if let summary = task.summary {
                                 Text(summary)
-                                    .font(.system(size: 11, design: .rounded))
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Color.white.opacity(0.44))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             HStack(spacing: 6) {
                                 Text("\(task.steps.count) Schritte")
                                 Text("·")
-                                Text(task.autonomy.title)
+                                Text(task.intent.title)
                                 Text("·")
-                                Text(task.status.title)
+                                Text(task.status.shortTitle)
                             }
-                            .font(.system(size: 9.5, design: .rounded))
-                            .foregroundStyle(.tertiary)
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(Color.white.opacity(0.26))
                         }
                     }
                 }
@@ -339,33 +424,35 @@ struct TasksView: View {
             VStack(spacing: 0) {
                 ForEach(store.audit) { event in
                     HStack(alignment: .top, spacing: 11) {
-                        ZStack {
-                            Circle().fill(event.kind.color.opacity(0.15)).frame(width: 24, height: 24)
-                            Image(systemName: event.icon)
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundStyle(event.kind.color)
-                        }
+                        Image(systemName: event.icon)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(event.kind.color)
+                            .frame(width: 22, height: 22)
+                            .background {
+                                Circle().fill(event.kind.color.opacity(0.10))
+                            }
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
                                 Text(event.title)
-                                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 11.5, weight: .medium))
+                                    .foregroundStyle(Color.white.opacity(0.82))
                                 Spacer(minLength: 0)
                                 Text(RelativeTime.string(from: event.date))
-                                    .font(.system(size: 9, design: .rounded))
-                                    .foregroundStyle(.tertiary)
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(Color.white.opacity(0.24))
                             }
                             Text(event.detail)
-                                .font(.system(size: 10.5, design: .rounded))
-                                .foregroundStyle(.secondary)
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(Color.white.opacity(0.40))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 9)
                     if event.id != store.audit.last?.id {
-                        Rectangle().fill(Color.white.opacity(0.06))
-                            .frame(height: 0.6)
-                            .padding(.leading, 43)
+                        Rectangle().fill(Color.white.opacity(0.05))
+                            .frame(height: 0.5)
+                            .padding(.leading, 41)
                     }
                 }
             }
@@ -381,13 +468,14 @@ struct NewTaskView: View {
 
     @State private var goal = ""
     @State private var autonomy: AutonomyLevel = .suggest
+    @State private var preview: AgentPlan?
     @FocusState private var focused: Bool
 
     private let examples = [
-        "Fasse meine Mails von heute zusammen",
+        "Überwache die GTA-6-News und melde nur Änderungen",
         "Prüfe alle Repos auf rote CI",
-        "Schreibe den Changelog für Tandem v1.0.0",
-        "Ordne meinen Kalender nächste Woche",
+        "Fasse mein Postfach zusammen und entwerfe Antworten",
+        "Stelle mein Morgen-Briefing zusammen",
     ]
 
     var body: some View {
@@ -395,24 +483,67 @@ struct NewTaskView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Was soll ich übernehmen?")
-                            .font(.system(size: 20, weight: .heavy, design: .rounded))
-                        Text("Ein Ziel reicht. Ich zerlege es in Schritte und halte an, sobald etwas deine Freigabe braucht.")
-                            .font(.system(size: 12, design: .rounded))
+                        Text("Was soll der Agent übernehmen?")
+                            .font(.system(size: 21, weight: .semibold))
+                        Text("Ein Ziel reicht. Der Agent wählt die Werkzeuge und hält an, sobald etwas deine Freigabe braucht.")
+                            .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
                     GlassCard(tint: store.accent, glow: true) {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             Text("ZIEL")
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .tracking(1.2)
-                                .foregroundStyle(.tertiary)
-                            TextField("z. B. Fasse meine Mails von heute zusammen", text: $goal, axis: .vertical)
-                                .font(.system(size: 14, design: .rounded))
+                                .font(.system(size: 9, weight: .heavy))
+                                .fontWidth(.expanded)
+                                .tracking(1.5)
+                                .foregroundStyle(Color.white.opacity(0.32))
+                            TextField("z. B. Überwache die GTA-6-News", text: $goal, axis: .vertical)
+                                .font(.system(size: 14))
                                 .lineLimit(3...6)
                                 .focused($focused)
+                                .onChange(of: goal) { _, newValue in
+                                    let cleaned = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    preview = cleaned.count > 3 ? TaskPlanner.plan(for: cleaned) : nil
+                                }
+                        }
+                    }
+
+                    if let preview {
+                        GlassCard(tint: VicePalette.cyan, glow: false, padding: 14) {
+                            VStack(alignment: .leading, spacing: 9) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: preview.intent.icon)
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(VicePalette.cyan)
+                                    Text("ERKANNTE ABSICHT")
+                                        .font(.system(size: 8.5, weight: .heavy))
+                                        .fontWidth(.expanded)
+                                        .tracking(1.4)
+                                        .foregroundStyle(Color.white.opacity(0.32))
+                                    Spacer()
+                                    Text(preview.intent.title)
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(VicePalette.cyan)
+                                }
+                                ForEach(preview.steps.indices, id: \.self) { index in
+                                    HStack(alignment: .top, spacing: 7) {
+                                        Text("\(index + 1)")
+                                            .font(.system(size: 9, design: .monospaced))
+                                            .foregroundStyle(Color.white.opacity(0.28))
+                                            .frame(width: 12, alignment: .leading)
+                                        Text(preview.steps[index].title)
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(Color.white.opacity(0.72))
+                                        Spacer(minLength: 0)
+                                        if let tool = preview.steps[index].tool {
+                                            Text(tool)
+                                                .font(.system(size: 8.5, design: .monospaced))
+                                                .foregroundStyle(AgentTool.tint(for: tool).opacity(0.8))
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -420,35 +551,36 @@ struct NewTaskView: View {
                         SectionHeader(title: "Autonomie", subtitle: nil, icon: "slider.horizontal.3", trailing: nil)
                         ForEach(AutonomyLevel.allCases) { level in
                             Button {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { autonomy = level }
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.88)) { autonomy = level }
                                 Haptics.selection()
                             } label: {
                                 HStack(spacing: 10) {
                                     Image(systemName: level.icon)
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(.system(size: 11, weight: .medium))
                                         .foregroundStyle(level.tint)
-                                        .frame(width: 22)
+                                        .frame(width: 20)
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(level.title)
-                                            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                                            .font(.system(size: 12.5, weight: .medium))
                                         Text(level.detail)
-                                            .font(.system(size: 10.5, design: .rounded))
+                                            .font(.system(size: 10.5))
                                             .foregroundStyle(.secondary)
                                             .fixedSize(horizontal: false, vertical: true)
                                     }
                                     Spacer(minLength: 0)
                                     Image(systemName: autonomy == level ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(autonomy == level ? store.accent : Color.white.opacity(0.2))
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(autonomy == level ? store.accent : Color.white.opacity(0.18))
                                 }
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 10)
                                 .background {
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(autonomy == level ? store.accent.opacity(0.10) : Color.white.opacity(0.03))
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(autonomy == level ? store.accent.opacity(0.08) : Color.white.opacity(0.02))
                                         .overlay {
-                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                .strokeBorder(autonomy == level ? store.accent.opacity(0.4) : Color.white.opacity(0.08),
-                                                              lineWidth: 0.9)
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .strokeBorder(autonomy == level ? store.accent.opacity(0.32) : Color.white.opacity(0.06),
+                                                              lineWidth: 0.5)
                                         }
                                 }
                             }
@@ -458,12 +590,14 @@ struct NewTaskView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("BEISPIELE")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .tracking(1.2)
-                            .foregroundStyle(.tertiary)
+                            .font(.system(size: 9, weight: .heavy))
+                            .fontWidth(.expanded)
+                            .tracking(1.5)
+                            .foregroundStyle(Color.white.opacity(0.28))
                             .padding(.horizontal, 4)
                         FlowChips(items: examples) { item in
                             goal = item
+                            preview = TaskPlanner.plan(for: item)
                             Haptics.tap()
                         }
                     }
@@ -471,7 +605,7 @@ struct NewTaskView: View {
                 .padding(18)
             }
             .background(AmbientBackdrop(theme: store.themeChoice, accent: store.accent))
-            .navigationTitle("Neue Aufgabe")
+            .navigationTitle("Neuer Lauf")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -507,17 +641,17 @@ struct FlowChips: View {
                     onSelect(item)
                 } label: {
                     Text(item)
-                        .font(.system(size: 11.5, design: .rounded))
-                        .foregroundStyle(.primary.opacity(0.9))
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Color.white.opacity(0.80))
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 9)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color.white.opacity(0.05))
+                                .fill(Color.white.opacity(0.035))
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
+                                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 0.5)
                                 }
                         }
                 }

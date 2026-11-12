@@ -25,8 +25,8 @@ struct RootView: View {
             .animation(.easeInOut(duration: 0.45), value: store.hasUnlocked)
             .animation(.easeInOut(duration: 0.35), value: store.hasOnboarded)
 
-            // CRT-Feeling: Vignette und feine Scanlines über allem.
-            ViceOverlay(strength: isLight ? 0.32 : 1)
+            // Ruhige Vignette über allem, damit die Kanten nicht klettern.
+            ObsidianVignette(strength: isLight ? 0.35 : 1)
                 .zIndex(2)
 
             if let toast = store.toast {
@@ -54,13 +54,13 @@ struct MainTabs: View {
     var body: some View {
         @Bindable var store = store
         TabView(selection: $store.selectedTab) {
-            Tab("Heute", systemImage: "sun.horizon.fill", value: 0) {
+            Tab("Heute", systemImage: "circle.hexagongrid.fill", value: 0) {
                 HomeView()
             }
-            Tab("Aufgaben", systemImage: "square.stack.3d.up.fill", value: 1) {
+            Tab("Läufe", systemImage: "bolt.horizontal.fill", value: 1) {
                 TasksView()
             }
-            Tab("Chat", systemImage: "sparkles", value: 2) {
+            Tab("Agent", systemImage: "bubble.left.and.bubble.right.fill", value: 2) {
                 ChatView()
             }
             Tab("Gedächtnis", systemImage: "brain.head.profile", value: 3) {
@@ -90,13 +90,13 @@ struct ToastView: View {
         .padding(.vertical, 12)
         .background {
             Capsule()
-                .fill(.clear)
-                .glassEffect(.regular.tint(toast.style.color.opacity(0.22)), in: Capsule())
-                .overlay {
-                    Capsule().strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
-                }
-                .shadow(color: toast.style.color.opacity(0.28), radius: 18, y: 6)
+                .fill(.ultraThinMaterial)
+                .overlay { Capsule().fill(toast.style.color.opacity(0.10)) }
         }
+        .overlay {
+            Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+        }
+        .shadow(color: Color.black.opacity(0.40), radius: 16, y: 6)
         .padding(.horizontal, 24)
     }
 }

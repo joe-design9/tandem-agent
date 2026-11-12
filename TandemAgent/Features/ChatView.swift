@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Der Chat mit Streaming, Tool-Pills und Rich Cards. Antworten kommen
-/// aus dem Simulator oder aus einem echten Modell — sichtbar wird nur,
-/// was der Agent tut.
+/// Der Chat mit dem Agenten: Werkzeug-Karten statt Textwüste. Man sieht,
+/// was geplant, welches Werkzeug aufgerufen und welches Ergebnis
+/// synthetisiert wurde.
 struct ChatView: View {
     @Environment(TandemStore.self) private var store
     @State private var draft = ""
@@ -10,10 +10,10 @@ struct ChatView: View {
     @FocusState private var focused: Bool
 
     private let starters = [
+        "Überwache die GTA-6-News",
+        "Prüfe meine GitHub CI Pipelines",
         "Was steht heute an?",
-        "Fasse meine Mails zusammen",
         "Welche Freigaben warten?",
-        "Wie laufen meine Repos?",
         "Was weißt du über mich?",
     ]
 
@@ -21,7 +21,7 @@ struct ChatView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 14) {
+                    LazyVStack(alignment: .leading, spacing: 16) {
                         if store.messages.isEmpty {
                             emptyState
                         } else {
@@ -46,16 +46,19 @@ struct ChatView: View {
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { composer }
-            .navigationTitle("Tandem")
+            .navigationTitle("Agent")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    VStack(spacing: 0) {
-                        Text("Tandem").font(.system(size: 14, weight: .bold, design: .rounded))
+                    VStack(spacing: 1) {
+                        Text("TANDEM")
+                            .font(.system(size: 11, weight: .heavy))
+                            .fontWidth(.expanded)
+                            .tracking(2.4)
                         HStack(spacing: 4) {
-                            Circle().fill(store.accent).frame(width: 5, height: 5)
+                            Circle().fill(store.accent).frame(width: 4, height: 4)
                             Text(store.isSimulator ? "Simulator · offline" : store.engineLabel)
-                                .font(.system(size: 9, weight: .medium, design: .rounded))
+                                .font(.system(size: 8.5, weight: .medium))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -71,6 +74,11 @@ struct ChatView: View {
                             store.selectedTab = 4
                         } label: {
                             Label("Modell wechseln", systemImage: "cpu")
+                        }
+                        Button {
+                            showApprovals = true
+                        } label: {
+                            Label("Freigaben", systemImage: "hand.raised")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -90,43 +98,47 @@ struct ChatView: View {
     private func messageView(_ message: ChatMessage) -> some View {
         if message.role == .user {
             HStack {
-                Spacer(minLength: 40)
+                Spacer(minLength: 44)
                 Text(message.text)
-                    .font(.system(size: 13.5, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.white.opacity(0.96))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(LinearGradient(colors: [store.accent.opacity(0.85), store.accentChoice.deep.opacity(0.85)],
+                            .fill(LinearGradient(colors: [store.accent.opacity(0.62),
+                                                          store.accentChoice.deep.opacity(0.85)],
                                                  startPoint: .topLeading, endPoint: .bottomTrailing))
                             .overlay {
                                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8)
+                                    .strokeBorder(Color.white.opacity(0.160), lineWidth: 0.5)
                             }
                     }
             }
         } else {
-            VStack(alignment: .leading, spacing: 9) {
+            VStack(alignment: .leading, spacing: 11) {
                 HStack(spacing: 6) {
-                    Image(systemName: "circle.hexagongrid.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(store.accent)
-                    Text("TANDEM")
-                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                        .tracking(1.4)
-                        .foregroundStyle(.secondary)
+                    Circle()
+                        .fill(store.accent)
+                        .frame(width: 5, height: 5)
+                        .shadow(color: store.accent.opacity(0.9), radius: 4)
+                    Text("AGENT")
+                        .font(.system(size: 8.5, weight: .heavy))
+                        .fontWidth(.expanded)
+                        .tracking(2.0)
+                        .foregroundStyle(Color.white.opacity(0.42))
                     if let engine = message.engine {
                         Text(engine)
-                            .font(.system(size: 8.5, design: .rounded))
-                            .foregroundStyle(.tertiary)
+                            .font(.system(size: 8.5))
+                            .foregroundStyle(Color.white.opacity(0.24))
                     }
+                    Spacer(minLength: 0)
                 }
 
                 if !message.tools.isEmpty {
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(alignment: .leading, spacing: 6) {
                         ForEach(message.tools) { tool in
-                            toolPill(tool)
+                            toolCard(tool)
                         }
                     }
                 }
@@ -145,63 +157,96 @@ struct ChatView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.clear)
-                    .glassEffect(.regular.tint(VicePalette.violet.opacity(0.22)),
-                                 in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .fill(.ultraThinMaterial)
                     .overlay {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(colors: [VicePalette.magenta.opacity(0.55),
-                                                        VicePalette.cyan.opacity(0.40)],
-                                               startPoint: .topLeading, endPoint: .bottomTrailing),
-                                lineWidth: 0.9
-                            )
+                            .fill(Color.white.opacity(0.02))
                     }
-                    .shadow(color: VicePalette.magenta.opacity(0.22), radius: 14, y: 4)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(colors: [Color.white.opacity(0.22), Color.white.opacity(0.04)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 0.5
+                    )
             }
         }
     }
 
-    private func toolPill(_ tool: ToolCall) -> some View {
-        HStack(spacing: 6) {
-            if tool.state == .running {
-                ProgressView().controlSize(.mini).tint(store.accent)
-            } else {
-                Image(systemName: tool.state == .done ? "checkmark" : "xmark")
-                    .font(.system(size: 7, weight: .bold))
-                    .foregroundStyle(tool.state == .done ? store.accent : Color(red: 1, green: 0.5, blue: 0.55))
+    /// Eine Werkzeug-Karte: `[Planung aktiv…]` → `[Tool: repo.check]` → Ergebnis.
+    private func toolCard(_ tool: ToolCall) -> some View {
+        let tint = AgentTool.tint(for: tool.name)
+        return HStack(spacing: 9) {
+            Group {
+                if tool.state == .running {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .tint(tint)
+                } else {
+                    Image(systemName: tool.state == .done ? AgentTool.icon(for: tool.name) : "xmark")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(tool.state == .done ? tint : VicePalette.coral)
+                }
             }
-            Text(tool.name)
-                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                .foregroundStyle(VicePalette.cyan.opacity(0.95))
+            .frame(width: 16)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(tool.name)
+                    .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(tint.opacity(0.92))
+                Text(tool.label)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.white.opacity(0.62))
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+
             if let result = tool.result {
-                Text("·")
-                    .foregroundStyle(.tertiary)
                 Text(result)
-                    .font(.system(size: 9.5, design: .rounded))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.40))
                     .lineLimit(1)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background {
+                        Capsule().fill(Color.white.opacity(0.05))
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.94)))
+            } else if tool.state == .running {
+                Text("läuft")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.32))
             }
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background {
-            Capsule()
-                .fill(VicePalette.cyan.opacity(0.12))
-                .overlay { Capsule().strokeBorder(VicePalette.cyan.opacity(0.30), lineWidth: 0.7) }
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.035))
         }
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(tint.opacity(tool.state == .running ? 0.30 : 0.12), lineWidth: 0.5)
+        }
+        .animation(.easeInOut(duration: 0.25), value: tool.state)
     }
 
     private var typingIndicator: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             ForEach(0..<3) { index in
                 Circle()
-                    .fill(store.accent.opacity(0.55))
-                    .frame(width: 5, height: 5)
+                    .fill(store.accent.opacity(0.6))
+                    .frame(width: 4, height: 4)
                     .opacity(store.isThinking ? 1 : 0.3)
-                    .animation(.easeInOut(duration: 0.6).repeatForever().delay(Double(index) * 0.15),
+                    .animation(.easeInOut(duration: 0.55).repeatForever().delay(Double(index) * 0.14),
                                value: store.isThinking)
             }
+            Text("denkt nach")
+                .font(.system(size: 10))
+                .foregroundStyle(Color.white.opacity(0.34))
+                .padding(.leading, 2)
         }
         .padding(.vertical, 4)
     }
@@ -210,13 +255,13 @@ struct ChatView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: card.icon)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(store.accent)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(card.title)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.system(size: 12, weight: .semibold))
                     Text(card.subtitle)
-                        .font(.system(size: 10, design: .rounded))
+                        .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
@@ -236,7 +281,7 @@ struct ChatView: View {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 8, weight: .bold))
                     }
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(store.accent)
                 }
                 .buttonStyle(.plain)
@@ -246,10 +291,10 @@ struct ChatView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(store.accent.opacity(0.08))
+                .fill(store.accent.opacity(0.07))
                 .overlay {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(store.accent.opacity(0.22), lineWidth: 0.8)
+                        .strokeBorder(store.accent.opacity(0.20), lineWidth: 0.5)
                 }
         }
     }
@@ -257,18 +302,18 @@ struct ChatView: View {
     // MARK: Leerzustand
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 7) {
-                Text("FRAG MICH IRGENDWAS.")
-                    .font(.system(size: 25, weight: .black, design: .rounded))
-                    .tracking(0.8)
-                    .foregroundStyle(LinearGradient(colors: [.white, VicePalette.gold, VicePalette.magenta],
-                                                   startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .shadow(color: VicePalette.magenta.opacity(0.5), radius: 14)
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("GIB MIR EIN ZIEL.")
+                    .font(.system(size: 26, weight: .heavy))
+                    .fontWidth(.condensed)
+                    .tracking(0.4)
+                    .foregroundStyle(LinearGradient(colors: [.white, Color.white.opacity(0.6)],
+                                                   startPoint: .top, endPoint: .bottom))
                 Text(store.isSimulator
-                     ? "Der Simulator antwortet offline und liest dabei dein Briefing, deine Freigaben und dein Gedächtnis. Für echte Modelle: Einstellungen → Backbone."
+                     ? "Der Simulator plant und ruft Werkzeuge auf, liest dabei Briefing, Freigaben und Gedächtnis. Für echte Modelle: Mehr → KI-Provider."
                      : "Verbunden mit \(store.engineLabel). Antworten nutzen Briefing, Freigaben und Gedächtnis als Kontext.")
-                    .font(.system(size: 12.5, design: .rounded))
+                    .font(.system(size: 12.5))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -276,14 +321,14 @@ struct ChatView: View {
             GlassCard(tint: store.accent, glow: true, padding: 16) {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 6) {
-                        Image(systemName: "wand.and.stars")
+                        Image(systemName: "point.3.connected.trianglepath.dotted")
                             .font(.system(size: 11))
                             .foregroundStyle(store.accent)
-                        Text("Das kann der Agent")
-                            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                        Text("So arbeitet der Agent")
+                            .font(.system(size: 11.5, weight: .semibold))
                     }
-                    Text("Frag nach dem Tag, nach Mails, nach deinen Repos. Wenn eine Antwort eine Aktion braucht, legt Tandem sie als Freigabe hin — gesendet wird nichts ohne dich.")
-                        .font(.system(size: 11.5, design: .rounded))
+                    Text("Ziel lesen → Schritte planen → Werkzeug aufrufen → Ergebnis synthetisieren. Alles Riskante wird zur Freigabe, bevor es rausgeht.")
+                        .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -291,31 +336,32 @@ struct ChatView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("VORSCHLÄGE")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .tracking(1.2)
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 9, weight: .heavy))
+                    .fontWidth(.expanded)
+                    .tracking(1.5)
+                    .foregroundStyle(Color.white.opacity(0.28))
                 ForEach(starters, id: \.self) { starter in
                     Button {
                         Haptics.tap()
                         store.send(starter)
                     } label: {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 9) {
                             Image(systemName: "arrow.turn.down.right")
-                                .font(.system(size: 9, weight: .bold))
+                                .font(.system(size: 9, weight: .semibold))
                                 .foregroundStyle(store.accent.opacity(0.8))
                             Text(starter)
-                                .font(.system(size: 12, design: .rounded))
-                                .foregroundStyle(.primary.opacity(0.9))
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.white.opacity(0.84))
                             Spacer(minLength: 0)
                         }
                         .padding(.horizontal, 13)
                         .padding(.vertical, 11)
                         .background {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.05))
+                                .fill(Color.white.opacity(0.035))
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 0.8)
+                                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 0.5)
                                 }
                         }
                     }
@@ -333,12 +379,12 @@ struct ChatView: View {
             if store.isThinking {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.mini).tint(store.accent)
-                    Text("Tandem arbeitet…")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                    Text("Agent arbeitet…")
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button("Stopp") { store.stopStreaming() }
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(store.accent)
                         .buttonStyle(.plain)
                 }
@@ -351,10 +397,10 @@ struct ChatView: View {
                 HStack(alignment: .bottom, spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 12))
-                        .foregroundStyle(store.accent.opacity(0.8))
+                        .foregroundStyle(store.accent.opacity(0.7))
                         .padding(.bottom, 9)
-                    TextField("Nachricht an Tandem…", text: $draft, axis: .vertical)
-                        .font(.system(size: 13.5, design: .rounded))
+                    TextField("Ziel, Frage oder Auftrag…", text: $draft, axis: .vertical)
+                        .font(.system(size: 13.5))
                         .lineLimit(1...5)
                         .focused($focused)
                         .padding(.vertical, 9)
@@ -362,18 +408,15 @@ struct ChatView: View {
                 .padding(.horizontal, 13)
                 .background {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(.clear)
-                        .glassEffect(.regular.tint(VicePalette.violet.opacity(0.28)),
-                                     in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .fill(.ultraThinMaterial)
                         .overlay {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .strokeBorder(
-                                    LinearGradient(colors: [VicePalette.cyan.opacity(0.55),
-                                                            VicePalette.magenta.opacity(0.45)],
-                                                   startPoint: .topLeading, endPoint: .bottomTrailing),
-                                    lineWidth: 0.9
-                                )
+                                .fill(Color.white.opacity(0.03))
                         }
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
                 }
 
                 Button {
@@ -383,18 +426,18 @@ struct ChatView: View {
                     Haptics.tap()
                 } label: {
                     Image(systemName: "arrow.up")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.black.opacity(0.85))
-                        .frame(width: 42, height: 42)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color(red: 0.04, green: 0.03, blue: 0.06))
+                        .frame(width: 40, height: 40)
                         .background {
                             Circle()
-                                .fill(store.accent.gradient)
-                                .shadow(color: store.accent.opacity(0.45), radius: 10, y: 3)
+                                .fill(store.accent)
+                                .shadow(color: store.accent.opacity(0.36), radius: 8, y: 3)
                         }
                 }
                 .buttonStyle(.plain)
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isThinking)
-                .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -402,8 +445,7 @@ struct ChatView: View {
         }
         .background {
             Rectangle()
-                .fill(.clear)
-                .glassEffect(.regular.tint(Color.black.opacity(0.15)), in: Rectangle())
+                .fill(.ultraThinMaterial)
                 .ignoresSafeArea(edges: .bottom)
         }
     }

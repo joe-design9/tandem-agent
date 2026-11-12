@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Der Gatekeeper: Tandem startet als geschlossene Research Preview.
-/// Ohne eingelösten Invite-Key bleibt die Stadt hinter Glas.
+/// Der Gatekeeper: Tandem startet als geschlossene Preview. Ohne
+/// Clearance-Code bleibt alles hinter Glas — und das Glas ist schwarz.
 struct InviteGateView: View {
     @Environment(TandemStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
@@ -11,82 +11,72 @@ struct InviteGateView: View {
     @State private var shake: CGFloat = 0
     @State private var unlocking = false
     @State private var glow = false
-    @State private var showFounderHint = false
     @FocusState private var fieldFocused: Bool
+
+    private let tiers: [(code: String, level: String)] = [
+        ("JOEL-VIP", "Founder"),
+        ("VICE-VIP", "VIP"),
+        ("LEONIDA-DEV", "Developer"),
+        ("OCEAN-DRIVE", "Guest"),
+    ]
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
-                Spacer(minLength: 12)
+            VStack(spacing: 20) {
+                Spacer(minLength: 10)
                 emblem
 
-                VStack(spacing: 7) {
+                VStack(spacing: 8) {
                     Text("TANDEM")
-                        .font(.system(size: 38, weight: .black, design: .rounded))
-                        .tracking(9)
-                        .foregroundStyle(
-                            LinearGradient(colors: [.white,
-                                                    VicePalette.gold,
-                                                    VicePalette.coral,
-                                                    VicePalette.magenta],
-                                           startPoint: .top, endPoint: .bottom)
-                        )
-                        .shadow(color: VicePalette.magenta.opacity(0.70), radius: 22)
-                    Text("LEONIDA RESEARCH PREVIEW")
-                        .font(.system(size: 9.5, weight: .black, design: .rounded))
-                        .tracking(3.2)
-                        .foregroundStyle(VicePalette.cyan)
-                        .shadow(color: VicePalette.cyan.opacity(0.85), radius: 9)
-                    HStack(spacing: 5) {
-                        Image(systemName: "sun.horizon.fill").font(.system(size: 8, weight: .bold))
-                        Text("VICE CITY · INVITE ONLY")
-                            .font(.system(size: 8.5, weight: .black, design: .rounded))
-                            .tracking(1.6)
+                        .font(.system(size: 13, weight: .heavy))
+                        .fontWidth(.expanded)
+                        .tracking(7)
+                        .foregroundStyle(Color.white.opacity(0.55))
+
+                    Text("LEONIDA")
+                        .font(.system(size: 46, weight: .heavy))
+                        .fontWidth(.condensed)
+                        .tracking(1.0)
+                        .foregroundStyle(LinearGradient(colors: [.white, Color.white.opacity(0.62)],
+                                                       startPoint: .top, endPoint: .bottom))
+
+                    Text("CLEARANCE GATE")
+                        .font(.system(size: 9.5, weight: .heavy))
+                        .fontWidth(.expanded)
+                        .tracking(4.4)
+                        .foregroundStyle(VicePalette.cyan.opacity(0.85))
+
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(store.accent)
+                            .frame(width: 4, height: 4)
+                        Text("PRIVATE PREVIEW · INVITE ONLY")
+                            .font(.system(size: 8, weight: .semibold))
+                            .fontWidth(.condensed)
+                            .tracking(1.8)
                     }
-                    .foregroundStyle(VicePalette.gold.opacity(0.85))
+                    .foregroundStyle(Color.white.opacity(0.32))
                     .padding(.top, 2)
                 }
 
                 gateCard
+                tierList
 
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        showFounderHint.toggle()
-                    }
-                    Haptics.tap()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "key.horizontal.fill").font(.system(size: 10, weight: .bold))
-                        Text("Wie komme ich nach Leonida?").font(.system(size: 12, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundStyle(VicePalette.cyan.opacity(0.9))
-                }
-                .buttonStyle(.plain)
-
-                if showFounderHint {
-                    Text("Tandem ist geschlossen. Den Key bekommst du von Joel — oder du nutzt einen Founder-Zugang:\n\(InviteKeys.masterHint)")
-                        .font(.system(size: 11.5, design: .rounded))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 22)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-
-                Spacer(minLength: 12)
+                Spacer(minLength: 10)
 
                 HStack(spacing: 6) {
                     Image(systemName: "lock.shield.fill").font(.system(size: 9))
-                    Text("Lokal geprüft · kein Konto nötig · v1.1.0 Leonida")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                    Text("Lokal geprüft · kein Konto nötig · v1.2.0 The Autonomous Agent")
+                        .font(.system(size: 9.5, weight: .medium))
                 }
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Color.white.opacity(0.24))
                 .padding(.bottom, 12)
             }
             .padding(.horizontal, 22)
         }
         .scrollBounceBehavior(.basedOnSize)
         .onAppear {
-            withAnimation(.easeInOut(duration: 4.5).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
                 glow = true
             }
         }
@@ -95,70 +85,53 @@ struct InviteGateView: View {
     private var emblem: some View {
         ZStack {
             Circle()
-                .fill(RadialGradient(colors: [VicePalette.hotPink.opacity(0.50),
-                                              VicePalette.violet.opacity(0.28),
+                .fill(RadialGradient(colors: [VicePalette.magenta.opacity(0.28),
+                                              VicePalette.violet.opacity(0.12),
                                               .clear],
-                                     center: .center, startRadius: 4, endRadius: 104))
-                .frame(width: 204, height: 204)
-                .blur(radius: glow ? 9 : 0)
-                .scaleEffect(glow ? 1.05 : 0.95)
+                                     center: .center, startRadius: 2, endRadius: 110))
+                .frame(width: 210, height: 210)
+                .blur(radius: glow ? 8 : 2)
+                .scaleEffect(glow ? 1.04 : 0.97)
 
-            Circle()
-                .strokeBorder(
-                    AngularGradient(colors: [
-                        VicePalette.cyan.opacity(0.9),
-                        Color.white.opacity(0.04),
-                        VicePalette.magenta.opacity(0.85),
-                        Color.white.opacity(0.04),
-                        VicePalette.gold.opacity(0.7),
-                        VicePalette.cyan.opacity(0.9),
-                    ], center: .center),
-                    lineWidth: 1.4
-                )
-                .frame(width: 198, height: 198)
-                .rotationEffect(.degrees(glow ? 360 : 0))
-                .animation(.linear(duration: 18).repeatForever(autoreverses: false), value: glow)
-
-            ViceEmblem()
-                .frame(width: 178, height: 178)
-                .shadow(color: VicePalette.magenta.opacity(0.55), radius: 20)
+            AgentEmblem(tint: store.accent, rim: VicePalette.cyan)
+                .frame(width: 176, height: 176)
         }
-        .frame(height: 200)
+        .frame(height: 196)
     }
 
     private var gateCard: some View {
-        GlassCard(tint: VicePalette.magenta, glow: true, padding: 20) {
+        GlassCard(tint: store.accent, glow: true, padding: 20) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top, spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(LinearGradient(colors: [VicePalette.magenta, VicePalette.coral],
-                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 38, height: 38)
-                            .shadow(color: VicePalette.magenta.opacity(0.7), radius: 10)
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 15, weight: .black))
-                            .foregroundStyle(Color.black.opacity(0.80))
-                    }
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                        .frame(width: 36, height: 36)
+                        .background {
+                            Circle().fill(.ultraThinMaterial)
+                                .overlay { Circle().fill(store.accent.opacity(0.10)) }
+                        }
+                        .overlay { Circle().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5) }
+
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Invite erforderlich")
-                            .font(.system(size: 17, weight: .black, design: .rounded))
-                        Text("Tandem ist eine geschlossene Preview. Löse deinen Key ein, dann gehört dir der Agent — und die Stadt.")
-                            .font(.system(size: 12.5, design: .rounded))
-                            .foregroundStyle(.secondary)
+                        Text("Clearance erforderlich")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(0.94))
+                        Text("Gib deinen Code ein. Er schaltet genau diese Installation frei — der Agent startet sofort, auch ohne API-Key.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.white.opacity(0.44))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
                 HStack(spacing: 8) {
-                    Image(systemName: "key.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(VicePalette.cyan)
-                        .shadow(color: VicePalette.cyan.opacity(0.9), radius: 7)
-                    TextField("VICE-XXXX-XXXX", text: $key)
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
-                        .tracking(1.2)
-                        .foregroundStyle(.white)
+                    Image(systemName: "key.horizontal.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(store.accent)
+                    TextField("CODE", text: $key)
+                        .font(.system(size: 16, weight: .medium, design: .monospaced))
+                        .tracking(2.2)
+                        .foregroundStyle(Color.white.opacity(0.96))
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .submitLabel(.go)
@@ -175,31 +148,29 @@ struct InviteGateView: View {
                             fieldFocused = true
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Color.white.opacity(0.28))
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 14)
+                .padding(.vertical, 15)
                 .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.black.opacity(colorScheme == .light ? 0.06 : 0.28))
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(Color.black.opacity(colorScheme == .light ? 0.05 : 0.26))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(fieldBorder, lineWidth: 1.3)
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .strokeBorder(fieldBorder, lineWidth: 0.7)
                         }
-                        .shadow(color: error == nil ? VicePalette.cyan.opacity(0.35) : Color(red: 1, green: 0.30, blue: 0.45).opacity(0.5),
-                                radius: 12)
                 }
                 .modifier(ShakeEffect(shakes: shake))
 
                 if let error {
                     HStack(spacing: 6) {
-                        Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10))
-                        Text(error).font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                        Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 9))
+                        Text(error).font(.system(size: 11.5, weight: .medium))
                     }
-                    .foregroundStyle(Color(red: 1.0, green: 0.45, blue: 0.58))
+                    .foregroundStyle(VicePalette.coral)
                     .transition(.opacity)
                 }
 
@@ -208,32 +179,91 @@ struct InviteGateView: View {
                         if unlocking {
                             ProgressView().controlSize(.small).tint(.black.opacity(0.7))
                         } else {
-                            Image(systemName: "lock.open.fill")
+                            Image(systemName: "lock.open.fill").font(.system(size: 12, weight: .semibold))
                         }
-                        Text(unlocking ? "Stadt wird geöffnet…" : "Vice City betreten")
+                        Text(unlocking ? "Clearance wird geprüft…" : "Clearance freigeben")
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(PrimaryGlassButtonStyle(tint: VicePalette.magenta))
+                .buttonStyle(PrimaryGlassButtonStyle(tint: store.accent))
                 .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || unlocking)
 
-                HStack(spacing: 5) {
-                    Image(systemName: "checkmark.seal.fill").font(.system(size: 9))
-                    Text("Jeder Key schaltet genau eine Installation frei.")
-                        .font(.system(size: 10.5, design: .rounded))
-                }
-                .foregroundStyle(.tertiary)
+                Text("Jeder Code gilt für eine Installation. Founder-Codes bleiben dauerhaft gültig.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.white.opacity(0.26))
             }
         }
-        .padding(.horizontal, 2)
+    }
+
+    private var tierList: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 6) {
+                Text("BEKANNTE CLEARANCE")
+                    .font(.system(size: 8.5, weight: .heavy))
+                    .fontWidth(.expanded)
+                    .tracking(2.0)
+                Spacer()
+                Text("tippen zum Einsetzen")
+                    .font(.system(size: 9))
+            }
+            .foregroundStyle(Color.white.opacity(0.26))
+            .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                ForEach(tiers, id: \.code) { tier in
+                    Button {
+                        key = tier.code
+                        error = nil
+                        Haptics.tap()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Text(tier.level.uppercased())
+                                .font(.system(size: 9, weight: .heavy))
+                                .fontWidth(.condensed)
+                                .tracking(1.2)
+                                .foregroundStyle(Color.white.opacity(0.34))
+                                .frame(width: 68, alignment: .leading)
+                            Text(tier.code)
+                                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                                .tracking(1.0)
+                                .foregroundStyle(Color.white.opacity(0.78))
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(Color.white.opacity(0.20))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 11)
+                    }
+                    .buttonStyle(.plain)
+
+                    if tier.code != tiers.last?.code {
+                        Rectangle().fill(Color.white.opacity(0.05))
+                            .frame(height: 0.5)
+                            .padding(.leading, 12)
+                    }
+                }
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.white.opacity(0.02))
+                    }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+            }
+        }
     }
 
     private var fieldBorder: LinearGradient {
         error == nil
-            ? LinearGradient(colors: [VicePalette.cyan, VicePalette.magenta, VicePalette.gold],
+            ? LinearGradient(colors: [store.accent.opacity(0.55), Color.white.opacity(0.10)],
                              startPoint: .topLeading, endPoint: .bottomTrailing)
-            : LinearGradient(colors: [Color(red: 1, green: 0.30, blue: 0.45),
-                                      Color(red: 1, green: 0.30, blue: 0.45)],
+            : LinearGradient(colors: [VicePalette.coral, VicePalette.coral.opacity(0.4)],
                              startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
@@ -246,7 +276,7 @@ struct InviteGateView: View {
         } else {
             withAnimation(.linear(duration: 0.4)) { shake += 1 }
             withAnimation(.easeOut(duration: 0.2)) {
-                error = key.isEmpty ? "Bitte gib einen Invite-Key ein." : "Dieser Key ist ungültig oder bereits verbraucht."
+                error = key.isEmpty ? "Bitte gib einen Clearance-Code ein." : "Dieser Code ist ungültig oder bereits verbraucht."
             }
             Haptics.warning()
         }

@@ -2,8 +2,8 @@ import SwiftUI
 import Observation
 
 /// Der Kopf der App: hält Zustand, Freigaben, Aufgaben, Gedächtnis und
-/// den Chat. Alles läuft auf dem MainActor, damit die Views einfach
-/// beobachten können.
+/// den Chat. Die Ausführung von Aufgaben liegt in `AgentEngine`; hier
+/// stehen nur die Daten und die Entscheidungen, die Joel trifft.
 @MainActor
 @Observable
 final class TandemStore {
@@ -51,9 +51,7 @@ final class TandemStore {
         didSet { defaults.set(appearance.rawValue, forKey: Keys.appearance) }
     }
     var glowEnabled: Bool = true {
-        didSet {
-            defaults.set(glowEnabled, forKey: "tandem.glow")
-        }
+        didSet { defaults.set(glowEnabled, forKey: "tandem.glow") }
     }
     var hapticsEnabled: Bool = true {
         didSet { defaults.set(hapticsEnabled, forKey: "tandem.haptics") }
@@ -87,6 +85,7 @@ final class TandemStore {
     var isThinking = false
     var isTesting = false
     var testResult: String?
+    var testProviderID: String?
     var toast: ToastMessage?
     var lastScan = Date()
 
@@ -95,6 +94,7 @@ final class TandemStore {
     @ObservationIgnored private var streamTask: Task<Void, Never>?
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored private var tickCount = 0
+    @ObservationIgnored private lazy var engine = AgentEngine(store: self)
 
     private enum Keys {
         static let provider = "tandem.provider"
@@ -123,6 +123,7 @@ final class TandemStore {
         loadSettings()
         if let snapshot = Self.loadSnapshot() {
             apply(snapshot)
+            resumeInterruptedTasks()
         } else {
             seed()
         }
@@ -144,12 +145,11 @@ final class TandemStore {
         if let raw = defaults.string(forKey: Keys.accent), let value = AccentChoice(rawValue: raw) {
             accentChoice = value
         }
-        // 1.1.0 bringt Leonida: einmalig auf die Vice-Bühne umschalten,
-        // auch wenn eine alte 1.0.0-Installation ihre Einstellungen behält.
-        if !defaults.bool(forKey: "tandem.viceMigration") {
+        // 1.2.0: Obsidian als Bühne, einmalig auch für Bestandsinstallationen.
+        if !defaults.bool(forKey: "tandem.obsidianMigration") {
             themeChoice = .electricVice
             accentChoice = .vicePink
-            defaults.set(true, forKey: "tandem.viceMigration")
+            defaults.set(true, forKey: "tandem.obsidianMigration")
         }
         if let raw = defaults.string(forKey: Keys.appearance), let value = Appearance(rawValue: raw) {
             appearance = value
@@ -189,7 +189,7 @@ final class TandemStore {
     var isSimulator: Bool { provider == .simulator || (provider.needsKey && apiKey(for: provider).isEmpty) }
 
     var engineLabel: String {
-        isSimulator ? "Tandem Simulator" : provider.title
+        isSimulator ? "Tandem Agent · Simulator" : provider.title
     }
 
     var pendingApprovals: [ApprovalRequest] {
@@ -203,6 +203,8 @@ final class TandemStore {
     var runningTasks: [AgentTask] {
         tasks.filter { $0.status == .running || $0.status == .queued || $0.status == .paused }
     }
+
+    var activeTaskCount: Int { runningTasks.count }
 
     var selectedModel: String {
         models[provider.rawValue] ?? provider.models.first?.id ?? ""
@@ -220,10 +222,19 @@ final class TandemStore {
                        customModel: customModel)
     }
 
-    var demoContext: DemoContext {
-        DemoContext(
+    func config(for provider: ProviderID) -> ProviderConfig {
+        ProviderConfig(provider: provider,
+                       model: models[provider.rawValue] ?? provider.models.first?.id ?? "",
+                       apiKey: apiKey(for: provider),
+                       baseURL: baseURLs[provider.rawValue] ?? provider.defaultBaseURL,
+                       customModel: customModel)
+    }
+
+    var agentContext: AgentContext {
+        AgentContext(
             userName: userName,
             city: city,
+            role: role,
             today: RelativeTime.weekdayLong(Date()),
             weather: briefing.weather,
             weatherDetail: briefing.weatherDetail,
@@ -235,8 +246,28 @@ final class TandemStore {
             memoryHighlights: memoryTopics.flatMap { $0.facts.prefix(1) },
             unreadMails: 3,
             repos: ["gta6-hub", "playtest-vault", "tandem-agent", "hermes-frontend"],
-            nightNote: briefing.nightNote
+            nightNote: briefing.nightNote,
+            recentScans: checkIns
         )
+    }
+
+    /// Alles, was das Laufband an echter Telemetrie zeigen kann.
+    var liveSignals: [String] {
+        var lines: [String] = []
+        if let task = runningTasks.first {
+            let step = task.currentStep?.title ?? "läuft"
+            lines.append("\(task.title.uppercased()) · \(Int(task.progress * 100)) % · \(step)")
+        }
+        if let approval = pendingApprovals.first {
+            lines.append("FREIGABE OFFEN · \(approval.title) · \(approval.risk.title)")
+        }
+        if let scan = checkIns.first {
+            lines.append("\(scan.title) · \(scan.detail)")
+        }
+        lines.append("ENGINE · \(engineLabel)")
+        let repoScan = checkIns.first { $0.title.localizedCaseInsensitiveContains("repo") }
+        lines.append("REPOS · \(repoScan?.detail ?? "keine Warnung")")
+        return lines
     }
 
     // MARK: - Modell / Keys
@@ -269,16 +300,25 @@ final class TandemStore {
     }
 
     func testProvider() {
+        testProvider(provider)
+    }
+
+    func testProvider(_ target: ProviderID) {
         guard !isTesting else { return }
+        guard target != .simulator else {
+            testResult = "Simulator bereit — kein Key nötig."
+            testProviderID = target.rawValue
+            return
+        }
         isTesting = true
         testResult = nil
+        testProviderID = target.rawValue
         Task {
-            let config = providerConfig
-            let result = await AIService.test(config: config)
+            let result = await AIService.test(config: config(for: target))
             isTesting = false
             switch result {
             case .success(let text):
-                testResult = "Verbunden: \(text.prefix(60))"
+                testResult = "Verbunden: \(text.prefix(48))"
                 Haptics.success()
             case .failure(let error):
                 testResult = error.localizedDescription
@@ -306,7 +346,7 @@ final class TandemStore {
             inviteKeys[index].redeemed = true
             inviteKeys[index].redeemedAt = Date()
         }
-        audit.insert(AuditEvent(title: "Preview freigeschaltet",
+        audit.insert(AuditEvent(title: "Clearance freigegeben",
                                 detail: "Invite-Key \(code) eingelöst",
                                 icon: "key.fill",
                                 kind: .system), at: 0)
@@ -412,109 +452,74 @@ final class TandemStore {
         persist()
     }
 
+    /// Nimmt eine vom Agenten vorbereitete Freigabe an — höchstens eine
+    /// pro Werkzeug und Titel, damit der Tisch nicht überläuft.
+    @discardableResult
+    func queue(_ approval: ApprovalRequest, from taskID: UUID?) -> Bool {
+        let duplicate = approvals.contains {
+            $0.state == .pending && $0.tool == approval.tool && $0.title == approval.title
+        }
+        guard !duplicate, pendingApprovals.count < 4 else { return false }
+        var value = approval
+        value.note = "Vom Agenten vorbereitet"
+        approvals.insert(value, at: 0)
+        audit.insert(AuditEvent(title: "Freigabe vorbereitet",
+                                detail: value.title,
+                                icon: "hand.raised.fill",
+                                kind: .approval), at: 0)
+        Haptics.soft()
+        persist()
+        return true
+    }
+
     // MARK: - Aufgaben
 
     func createTask(title: String? = nil, goal: String, autonomy: AutonomyLevel? = nil) {
         let cleaned = goal.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
-        let resolvedTitle = title ?? TaskPlanner.title(for: cleaned)
-        var task = AgentTask(title: resolvedTitle,
+        let plan = TaskPlanner.plan(for: cleaned)
+        var task = AgentTask(title: title ?? plan.title,
                              goal: cleaned,
                              autonomy: autonomy ?? defaultAutonomy,
+                             intent: plan.intent,
                              status: .queued,
-                             steps: TaskPlanner.steps(for: cleaned))
+                             steps: plan.steps)
         task.source = "Chat"
+        task.log = [AgentLogEntry(level: .info, text: plan.opening)]
         tasks.insert(task, at: 0)
         audit.insert(AuditEvent(title: "Aufgabe gestartet",
-                                detail: resolvedTitle,
+                                detail: task.title,
                                 icon: "play.circle.fill",
                                 kind: .task), at: 0)
-        showToast("Aufgabe läuft — Schritte siehst du im Aufgaben-Tab", style: .info)
+        showToast("Agent läuft — Protokoll im Aufgaben-Tab", style: .info)
         Haptics.soft()
         persist()
-        let id = task.id
-        Task { await self.run(id) }
-    }
-
-    private func run(_ id: UUID) async {
-        guard let start = tasks.firstIndex(where: { $0.id == id }) else { return }
-        tasks[start].status = .running
-        if tasks[start].steps.isEmpty {
-            tasks[start].steps = TaskPlanner.steps(for: tasks[start].goal)
-        }
-        persist()
-
-        var stepIndex = 0
-        while stepIndex < (tasks.first(where: { $0.id == id })?.steps.count ?? 0) {
-            // Pause abwarten.
-            while let current = tasks.first(where: { $0.id == id }), current.status == .paused {
-                try? await Task.sleep(for: .milliseconds(500))
-            }
-            guard let running = tasks.first(where: { $0.id == id }), running.status == .running else { return }
-
-            tasks = tasks.map { task in
-                guard task.id == id else { return task }
-                var copy = task
-                if copy.steps.indices.contains(stepIndex) {
-                    copy.steps[stepIndex].state = .running
-                }
-                return copy
-            }
-            Haptics.soft()
-            try? await Task.sleep(for: .milliseconds(TaskPlanner.duration(for: stepIndex)))
-
-            guard let stillRunning = tasks.first(where: { $0.id == id }), stillRunning.status == .running else { return }
-            tasks = tasks.map { task in
-                guard task.id == id else { return task }
-                var copy = task
-                if copy.steps.indices.contains(stepIndex) {
-                    copy.steps[stepIndex].state = .done
-                }
-                return copy
-            }
-            persist()
-            stepIndex += 1
-        }
-
-        guard let index = tasks.firstIndex(where: { $0.id == id }), tasks[index].status == .running else { return }
-        tasks[index].status = .done
-        tasks[index].finishedAt = Date()
-        tasks[index].summary = TaskPlanner.summary(for: tasks[index].goal)
-        let finished = tasks.remove(at: index)
-        history.insert(finished, at: 0)
-        audit.insert(AuditEvent(title: "Aufgabe abgeschlossen",
-                                detail: finished.title,
-                                icon: "checkmark.circle.fill",
-                                kind: .task), at: 0)
-        checkIns.insert(CheckIn(icon: "checkmark.circle.fill",
-                                title: "Aufgabe fertig",
-                                detail: finished.title,
-                                date: Date(),
-                                tone: .good), at: 0)
-        showToast("Fertig: \(finished.title)", style: .success)
-        Haptics.success()
-        persist()
+        engine.launch(taskID: task.id)
     }
 
     func togglePause(_ id: UUID) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
         if tasks[index].status == .paused {
             tasks[index].status = .running
+            engine.launch(taskID: id)
             Haptics.tap()
-            showToast("Aufgabe läuft weiter", style: .info)
+            showToast("Agent läuft weiter", style: .info)
         } else if tasks[index].status == .running {
             tasks[index].status = .paused
+            appendLog(id, level: .info, text: "Pausiert von dir")
             Haptics.tap()
-            showToast("Aufgabe pausiert", style: .info)
+            showToast("Agent pausiert", style: .info)
         }
         persist()
     }
 
     func cancelTask(_ id: UUID) {
+        engine.cancel(taskID: id)
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
         tasks[index].status = .cancelled
         tasks[index].finishedAt = Date()
         tasks[index].summary = "Von dir abgebrochen."
+        tasks[index].log.append(AgentLogEntry(level: .warning, text: "Lauf abgebrochen"))
         let cancelled = tasks.remove(at: index)
         history.insert(cancelled, at: 0)
         audit.insert(AuditEvent(title: "Aufgabe abgebrochen",
@@ -525,6 +530,60 @@ final class TandemStore {
         persist()
     }
 
+    // MARK: - Aufgaben-Laufzeit (von der Engine genutzt)
+
+    func mutateTask(_ id: UUID, _ change: (inout AgentTask) -> Void) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        change(&tasks[index])
+        persist()
+    }
+
+    func appendLog(_ id: UUID, level: AgentLogEntry.Level, text: String, tool: String? = nil) {
+        mutateTask(id) { value in
+            value.log.append(AgentLogEntry(level: level, text: text, tool: tool))
+            if value.log.count > 80 { value.log.removeFirst(value.log.count - 80) }
+        }
+    }
+
+    func finishTask(_ id: UUID, summary: String) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        tasks[index].status = .done
+        tasks[index].finishedAt = Date()
+        tasks[index].summary = summary
+        for stepIndex in tasks[index].steps.indices where tasks[index].steps[stepIndex].state == .pending {
+            tasks[index].steps[stepIndex].state = .done
+        }
+        let finished = tasks.remove(at: index)
+        history.insert(finished, at: 0)
+        audit.insert(AuditEvent(title: "Aufgabe abgeschlossen",
+                                detail: finished.title,
+                                icon: "checkmark.circle.fill",
+                                kind: .task), at: 0)
+        for tool in Set(finished.steps.compactMap { $0.tool }) {
+            audit.insert(AuditEvent(title: "Werkzeug ausgeführt",
+                                    detail: tool,
+                                    icon: AgentTool.icon(for: tool),
+                                    kind: .tool), at: 0)
+        }
+        checkIns.insert(CheckIn(icon: "checkmark.circle.fill",
+                                title: "Agent fertig",
+                                detail: finished.title,
+                                date: Date(),
+                                tone: .good), at: 0)
+        showToast("Fertig: \(finished.title)", style: .success)
+        Haptics.success()
+        persist()
+    }
+
+    /// Nach einem Neustart laufen angefangene Aufgaben weiter — sonst
+    /// blieben sie für immer bei 40 % stehen.
+    private func resumeInterruptedTasks() {
+        let resumable = tasks.filter { $0.status == .running || $0.status == .queued }
+        for task in resumable {
+            engine.launch(taskID: task.id)
+        }
+    }
+
     // MARK: - Briefing
 
     func regenerateBriefing() {
@@ -532,7 +591,7 @@ final class TandemStore {
         isRegeneratingBriefing = true
         Haptics.soft()
         Task {
-            try? await Task.sleep(for: .milliseconds(1200))
+            try? await Task.sleep(for: .milliseconds(1400))
             briefing.generatedAt = Date()
             briefing.focus = Self.focusIdeas.randomElement() ?? briefing.focus
             isRegeneratingBriefing = false
@@ -541,6 +600,10 @@ final class TandemStore {
                                     detail: "6 Quellen geprüft, 1 neuer Hinweis",
                                     date: Date(),
                                     tone: .good), at: 0)
+            audit.insert(AuditEvent(title: "Briefing gebaut",
+                                    detail: "Kalender, Postfach, Wetter, Repos",
+                                    icon: "sun.horizon.fill",
+                                    kind: .scan), at: 0)
             showToast("Briefing aktualisiert", style: .success)
             Haptics.success()
             persist()
@@ -575,35 +638,32 @@ final class TandemStore {
                                 detail: template.detail,
                                 date: Date(),
                                 tone: template.tone), at: 0)
-        if checkIns.count > 10 { checkIns.removeLast(checkIns.count - 10) }
+        if checkIns.count > 12 { checkIns.removeLast(checkIns.count - 12) }
 
-        // Alle paar Runden entsteht ein neuer Vorschlag — aber nie mehr
-        // als drei offene Freigaben, damit der Tisch nicht überläuft.
-        if tickCount % 3 == 0, pendingApprovals.count < 3,
+        if tickCount % 4 == 0, pendingApprovals.count < 3,
            let proposal = Self.proposalRotation.randomElement() {
-            approvals.insert(proposal, at: 0)
+            queue(proposal, from: nil)
             showToast("Neue Freigabe vorbereitet", style: .info)
-            Haptics.soft()
         }
         persist()
     }
 
     private static let focusIdeas: [String] = [
-        "Heute zählt ein Ding: Tandem 1.1.0 rausbringen — danach ist der Kopf frei für Reviews.",
+        "Heute zählt ein Ding: den GTA-6-News-Lauf scharf stellen, danach ist der Kopf frei für Reviews.",
         "Drei Termine, ein langer Fokusblock — ich habe die Mails schon vorsortiert.",
-        "Ruhiger Tag in Leonida. Perfekt, um das Playtest-Vault-Release zu schneiden.",
+        "Ruhiger Tag in Köln. Perfekt, um das Playtest-Vault-Release zu schneiden.",
         "Vor dem Mittagessen ist dein Kalender voll, ab 13 Uhr kannst du durchziehen.",
     ]
 
     private static let scanRotation: [(icon: String, title: String, detail: String, tone: CheckIn.Tone)] = [
-        ("envelope.badge", "Weazel News · Mail-Scan", "0 neue dringende Mails", .good),
-        ("chevron.left.forwardslash.chevron.right", "Leonida Dispatch · GitHub", "Alle Repos grün, keine roten Läufe", .good),
-        ("calendar", "VCPR · Kalender", "Nächster Termin in 42 Minuten", .neutral),
-        ("cloud.sun.rain", "Vice Wetter · Ocean Drive", "Regenfenster ab 16 Uhr bestätigt", .warn),
-        ("bolt.batteryblock", "ViceNet · Gerätestatus", "Akku 74 %, Backup um 03:12 gelaufen", .good),
-        ("brain.head.profile", "Tandem Gedächtnis", "2 neue Fakten aus dem Chat übernommen", .neutral),
-        ("person.2.wave.2", "Vice City Kontakte", "Keine offenen Anfragen", .neutral),
-        ("doc.text.magnifyingglass", "Aktenzeichen Leonida", "Keine neuen Verträge oder Rechnungen", .good),
+        ("envelope.badge", "Postfach-Scan", "0 neue dringende Mails", .good),
+        ("chevron.left.forwardslash.chevron.right", "Repo-Scan", "Alle Repos grün, keine roten Läufe", .good),
+        ("calendar", "Kalender-Scan", "Nächster Termin in 42 Minuten", .neutral),
+        ("cloud.sun.rain", "Wetter", "Regenfenster ab 16 Uhr bestätigt", .warn),
+        ("bolt.batteryblock", "Gerätestatus", "Akku 74 %, Backup um 03:12 gelaufen", .good),
+        ("brain.head.profile", "Gedächtnis", "2 neue Fakten aus dem Chat übernommen", .neutral),
+        ("newspaper", "News-Scan", "GTA-6-Lage unverändert, 1 neue Meldung", .neutral),
+        ("doc.text.magnifyingglass", "Dokumente", "Keine neuen Verträge oder Rechnungen", .good),
     ]
 
     private static var proposalRotation: [ApprovalRequest] {
@@ -629,7 +689,7 @@ final class TandemStore {
                             summary: "12,80 € für ein Jahr, Karte endet auf 4417",
                             amount: "12,80 €",
                             risk: .medium,
-                            tool: "payments.charge",
+                            tool: "pay.charge",
                             reason: "Läuft in 4 Tagen ab."),
         ]
     }
@@ -660,17 +720,17 @@ final class TandemStore {
 
     private func respond(to text: String, simulator: Bool) async {
         let messageID = UUID()
-        var message = ChatMessage(role: .agent, text: "", engine: simulator ? "Tandem Simulator" : provider.title)
+        var message = ChatMessage(role: .agent, text: "", engine: simulator ? "Tandem Agent" : provider.title)
         message.id = messageID
         messages.append(message)
 
         if simulator {
-            let plan = DemoBrain.plan(for: text, context: demoContext)
+            let plan = DemoBrain.plan(for: text, context: agentContext)
             if !plan.tools.isEmpty {
                 let calls = plan.tools.map { ToolCall(name: $0.name, label: $0.label) }
                 updateMessage(messageID) { $0.tools = calls }
                 for (index, tool) in plan.tools.enumerated() {
-                    try? await Task.sleep(for: .milliseconds(380))
+                    try? await Task.sleep(for: .milliseconds(430))
                     if Task.isCancelled { return }
                     updateMessage(messageID) { message in
                         guard message.tools.indices.contains(index) else { return }
@@ -683,15 +743,18 @@ final class TandemStore {
             for chunk in chunks {
                 if Task.isCancelled { return }
                 updateMessage(messageID) { $0.text += chunk }
-                try? await Task.sleep(for: .milliseconds(18))
+                try? await Task.sleep(for: .milliseconds(16))
             }
             if let card = plan.card {
                 updateMessage(messageID) { $0.card = card }
             }
+            if let task = plan.task, let card = plan.card, card.kind == .task {
+                createTask(title: task.title, goal: task.goal)
+            }
         } else {
             updateMessage(messageID) { message in
                 message.tools = [ToolCall(name: "context.build",
-                                          label: "Kontext: Gedächtnis, Kalender, Freigaben",
+                                          label: "Kontext: Gedächtnis, Freigaben, Briefing",
                                           state: .done,
                                           result: engineLabel)]
             }
@@ -711,7 +774,7 @@ final class TandemStore {
                 }
             } catch {
                 updateMessage(messageID) {
-                    $0.text = "**Verbindung fehlgeschlagen.** \(error.localizedDescription)\n\nTipp: In den Einstellungen den Key prüfen oder auf den Tandem Simulator umschalten — der läuft immer."
+                    $0.text = "**Verbindung fehlgeschlagen.** \(error.localizedDescription)\n\nTipp: In den Einstellungen den Key prüfen oder auf den Tandem-Simulator umschalten — der läuft immer."
                 }
                 showToast("Anbieter nicht erreichbar", style: .warning)
             }
@@ -750,8 +813,9 @@ final class TandemStore {
         let approvals = store.pendingApprovals.map { "- \($0.kind.title): \($0.title)" }.joined(separator: "\n")
         let agenda = store.briefing.agenda.map { "- \($0.time) \($0.title)" }.joined(separator: "\n")
         let facts = store.memoryTopics.flatMap { $0.facts.prefix(2) }.map { "- \($0)" }.joined(separator: "\n")
+        let tasks = store.runningTasks.map { "- \($0.title) (\(Int($0.progress * 100)) %)" }.joined(separator: "\n")
         return """
-        Du bist Tandem, ein proaktiver persönlicher Agent in der Tandem-App.
+        Du bist Tandem, ein autonomer persönlicher Agent in der Tandem-App.
         Der Nutzer heißt \(store.userName), wohnt in \(store.city) und arbeitet als \(store.role).
 
         Deine Regeln:
@@ -761,6 +825,9 @@ final class TandemStore {
         - Nenne am Ende eines Vorschlags immer den nächsten konkreten Schritt.
 
         Heute: \(RelativeTime.weekdayLong(Date())), \(store.briefing.temperature) \(store.briefing.weather.lowercased()).
+
+        Laufende Aufgaben:
+        \(tasks.isEmpty ? "- keine" : tasks)
 
         Offene Freigaben:
         \(approvals.isEmpty ? "- keine" : approvals)
@@ -854,7 +921,7 @@ final class TandemStore {
 
     private var snapshotURL: URL {
         let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return directory.appendingPathComponent("tandem-state.json")
+        return directory.appendingPathComponent("tandem-state-v3.json")
     }
 
     func persist() {
@@ -881,7 +948,7 @@ final class TandemStore {
 
     private static func loadSnapshot() -> Snapshot? {
         let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let url = directory.appendingPathComponent("tandem-state.json")
+        let url = directory.appendingPathComponent("tandem-state-v3.json")
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(Snapshot.self, from: data)
     }
@@ -910,30 +977,30 @@ final class TandemStore {
         briefing = MorningBriefing(
             generatedAt: now.addingTimeInterval(-420),
             greeting: "Guten Morgen",
-            focus: "Heute zählt ein Ding: Tandem 1.1.0 rausbringen — Leonida-Edition, Neon überall. Danach ist der Kopf frei für Reviews.",
-            weather: "Sonnig, 24 °C, leichte Palmenbrise",
-            weatherDetail: "Ab 19 Uhr zieht Neon-Regen über Ocean Drive, gegen 21 Uhr klart es auf.",
-            weatherIcon: "sun.max.fill",
-            temperature: "24 °C",
+            focus: "Heute zählt ein Ding: Der GTA-6-News-Lauf soll von allein laufen — danach ist der Kopf frei für Reviews.",
+            weather: "Bewölkt, 9 °C, leichter Wind aus West",
+            weatherDetail: "Ab 16 Uhr Regen, gegen 19 Uhr trocken. Gute Stunde für die Laufrunde am Rhein.",
+            weatherIcon: "cloud.sun.fill",
+            temperature: "9 °C",
             agenda: [
                 BriefingItem(time: "09:30", title: "Standup mit dem Team", detail: "15 Minuten, danach Fokusblock", icon: "person.2.fill"),
-                BriefingItem(time: "11:00", title: "Fokusblock: Tandem 1.1.0", detail: "Vice-Redesign, Build, IPA, Release", icon: "hammer.fill", highlight: true),
+                BriefingItem(time: "11:00", title: "Fokusblock: Tandem 1.2.0", detail: "Agent-Engine, Build, IPA, Release", icon: "hammer.fill", highlight: true),
                 BriefingItem(time: "14:00", title: "Review: Playtest Vault", detail: "3 Pull Requests warten", icon: "chevron.left.forwardslash.chevron.right"),
                 BriefingItem(time: "18:30", title: "Laufrunde am Rhein", detail: "6 km, ab 18 Uhr trocken", icon: "figure.run"),
             ],
-            todos: ["Omas iPhone-Backup prüfen", "PR #12 in playtest-vault reviewen", "Release-Notes für Tandem 1.1.0 schreiben"],
+            todos: ["Omas iPhone-Backup prüfen", "PR #12 in playtest-vault reviewen", "Release-Notes für Tandem 1.2.0 schreiben"],
             nightNote: "Nachtaktivität: Mail-Scan um 02:14 (0 dringend), GitHub durchgehend grün, iPhone-Backup um 03:12 gesichert."
         )
 
         checkIns = [
-            CheckIn(icon: "envelope.badge", title: "Weazel News · Mail-Check vor 15 Min.", detail: "3 neue Mails, 1 davon dringend", date: now.addingTimeInterval(-900), tone: .warn),
-            CheckIn(icon: "chevron.left.forwardslash.chevron.right", title: "Leonida Dispatch · GitHub vor 32 Min.", detail: "Alle 4 Repos grün, keine roten CI-Läufe", date: now.addingTimeInterval(-1920), tone: .good),
-            CheckIn(icon: "calendar", title: "VCPR · Kalender vor 48 Min.", detail: "Nächster Termin 11:00 — Fokusblock Tandem", date: now.addingTimeInterval(-2880), tone: .neutral),
-            CheckIn(icon: "cloud.sun.rain", title: "Vice Wetter vor 1 Std.", detail: "Neon-Regen ab 19:00 erkannt", date: now.addingTimeInterval(-3600), tone: .neutral),
-            CheckIn(icon: "brain.head.profile", title: "Tandem Gedächtnis vor 2 Std.", detail: "Neuer Fakt: Tandem-Projekt (Release 1.1.0)", date: now.addingTimeInterval(-7200), tone: .good),
-            CheckIn(icon: "bolt.batteryblock", title: "ViceNet · Gerät vor 3 Std.", detail: "Akku 74 %, Backup um 03:12 gelaufen", date: now.addingTimeInterval(-10800), tone: .good),
-            CheckIn(icon: "person.2.wave.2", title: "Vice City Kontakte vor 4 Std.", detail: "Keine offenen Anfragen", date: now.addingTimeInterval(-14400), tone: .neutral),
-            CheckIn(icon: "key.fill", title: "Preview vor 5 Std.", detail: "Invite-Key eingelöst, Founder-Zugang aktiv", date: now.addingTimeInterval(-18000), tone: .good),
+            CheckIn(icon: "newspaper", title: "News-Scan vor 6 Min.", detail: "GTA-6-Lage unverändert, 1 neue Meldung", date: now.addingTimeInterval(-360), tone: .neutral),
+            CheckIn(icon: "envelope.badge", title: "Postfach-Scan vor 15 Min.", detail: "3 neue Mails, 1 davon dringend", date: now.addingTimeInterval(-900), tone: .warn),
+            CheckIn(icon: "chevron.left.forwardslash.chevron.right", title: "Repo-Scan vor 32 Min.", detail: "Alle 4 Repos grün, keine roten CI-Läufe", date: now.addingTimeInterval(-1920), tone: .good),
+            CheckIn(icon: "calendar", title: "Kalender-Scan vor 48 Min.", detail: "Nächster Termin 11:00 — Fokusblock Tandem", date: now.addingTimeInterval(-2880), tone: .neutral),
+            CheckIn(icon: "cloud.sun.rain", title: "Wetter vor 1 Std.", detail: "Regen ab 16:00 erkannt", date: now.addingTimeInterval(-3600), tone: .neutral),
+            CheckIn(icon: "brain.head.profile", title: "Gedächtnis vor 2 Std.", detail: "Neuer Fakt: Tandem-Projekt (Release 1.2.0)", date: now.addingTimeInterval(-7200), tone: .good),
+            CheckIn(icon: "bolt.batteryblock", title: "Gerät vor 3 Std.", detail: "Akku 74 %, Backup um 03:12 gelaufen", date: now.addingTimeInterval(-10800), tone: .good),
+            CheckIn(icon: "key.fill", title: "Clearance vor 5 Std.", detail: "Invite-Key eingelöst, Founder-Zugang aktiv", date: now.addingTimeInterval(-18000), tone: .good),
         ]
 
         approvals = [
@@ -952,9 +1019,9 @@ final class TandemStore {
                             summary: "Monatsabo läuft am 14.11. aus",
                             amount: "10,00 € / Monat",
                             risk: .medium,
-                            tool: "payments.charge",
+                            tool: "pay.charge",
                             createdAt: now.addingTimeInterval(-5400),
-                            reason: "Die hinterlegte Karte endet auf 4417. Tandem hat die Zahlung vorbereitet, aber nicht ausgelöst."),
+                            reason: "Die hinterlegte Karte endet auf 4417. Vorbereitet, aber nicht ausgelöst."),
             ApprovalRequest(kind: .deletion,
                             title: "Alte Build-Artefakte löschen",
                             summary: "12,4 GB Actions-Artifacts älter als 30 Tage",
@@ -982,53 +1049,74 @@ final class TandemStore {
                             createdAt: now.addingTimeInterval(-172800),
                             state: .rejected,
                             decidedAt: now.addingTimeInterval(-170000),
-                            reason: "Tandem hatte den Rückblick am Freitag vorbereitet."),
+                            reason: "Der Agent hatte den Rückblick am Freitag vorbereitet."),
         ]
 
-        tasks = [
-            AgentTask(title: "Playtest-Vault: Changelog für v0.9",
-                      goal: "Sammle alle Commits seit v0.8.4 und schreibe den Changelog für v0.9",
-                      autonomy: .suggest,
-                      status: .running,
-                      steps: [
-                        TaskStep(title: "Commits seit v0.8.4 sammeln", detail: "37 Commits, 4 Autoren", state: .done),
-                        TaskStep(title: "Änderungen nach Bereich clustern", detail: "UI, Sync, Build", state: .done),
-                        TaskStep(title: "Changelog formulieren", detail: "3 Abschnitte, deutsch", state: .running),
-                        TaskStep(title: "Release-Entwurf zur Freigabe", detail: "Geht an dich, nicht direkt raus", state: .pending),
-                      ],
-                      createdAt: now.addingTimeInterval(-1500)),
-            AgentTask(title: "Wochenrückblick aus Commits",
-                      goal: "Fasse die Woche über alle Repos zusammen und lege einen Entwurf an",
-                      autonomy: .ask,
-                      status: .running,
-                      steps: [
-                        TaskStep(title: "Repos scannen", detail: "4 Repos, 62 Commits", state: .done),
-                        TaskStep(title: "Highlights auswählen", detail: "Tandem v1.0.0, Hub v2.0.0", state: .running),
-                        TaskStep(title: "Entwurf schreiben", detail: "Wartet auf dich", state: .pending),
-                      ],
-                      createdAt: now.addingTimeInterval(-600)),
+        var newsTask = AgentTask(title: "GTA-6-News-Lage",
+                                 goal: "Überwache die GTA-6-News und melde nur, was sich wirklich ändert",
+                                 autonomy: .suggest,
+                                 intent: .newsScan,
+                                 status: .running,
+                                 steps: [
+                                    TaskStep(title: "Quellen scannen", detail: "Newswire, Portale, dein Hub", tool: "web.scan", state: .done, result: "4 Quellen geprüft"),
+                                    TaskStep(title: "Meldungen prüfen", detail: "Volltext, Dubletten, Alter", tool: "web.read", state: .done, result: "2 Quellen gelesen"),
+                                    TaskStep(title: "Relevanz gewichten", detail: "Bezug zu GTA 6 und deinen Projekten", tool: "news.rank", state: .running),
+                                    TaskStep(title: "Kurzbriefing formulieren", detail: "Drei Zeilen, kein Presse-Sprech", tool: "brief.compose"),
+                                 ],
+                                 createdAt: now.addingTimeInterval(-1500))
+        newsTask.log = [
+            AgentLogEntry(date: now.addingTimeInterval(-1500), level: .info, text: "Ziel analysiert · Absicht: News-Überwachung"),
+            AgentLogEntry(date: now.addingTimeInterval(-1490), level: .tool, text: "Plan gebaut · 4 Schritte", tool: "plan.build"),
+            AgentLogEntry(date: now.addingTimeInterval(-1480), level: .tool, text: "Quellen scannen · web.scan", tool: "web.scan"),
+            AgentLogEntry(date: now.addingTimeInterval(-1460), level: .result, text: "4 Quellen geprüft", tool: "web.scan"),
+            AgentLogEntry(date: now.addingTimeInterval(-1450), level: .info, text: "Gescannt: Rockstar Newswire, GTANet, r/GTA6, dein gta6-hub", tool: "web.scan"),
+            AgentLogEntry(date: now.addingTimeInterval(-1440), level: .tool, text: "Meldungen prüfen · web.read", tool: "web.read"),
+            AgentLogEntry(date: now.addingTimeInterval(-1430), level: .result, text: "2 Quellen gelesen", tool: "web.read"),
         ]
+
+        var repotask = AgentTask(title: "CI-Audit über alle Repos",
+                                 goal: "Prüfe meine GitHub CI Pipelines und sage mir, was rot ist",
+                                 autonomy: .act,
+                                 intent: .repoAudit,
+                                 status: .running,
+                                 steps: [
+                                    TaskStep(title: "Repos prüfen", detail: "Branches, offene PRs, letzte Commits", tool: "repo.check", state: .done, result: "4 Repos grün"),
+                                    TaskStep(title: "CI-Läufe prüfen", detail: "Rote Builds, Laufzeiten, Ursachen", tool: "ci.inspect", state: .running),
+                                    TaskStep(title: "Kontext abgleichen", detail: "Gedächtnis und letzte Scans", tool: "memory.sync"),
+                                    TaskStep(title: "Ergebnis synthetisieren", detail: "Was grün ist, was dich braucht", tool: "result.synthesis"),
+                                 ],
+                                 createdAt: now.addingTimeInterval(-600))
+        repotask.log = [
+            AgentLogEntry(date: now.addingTimeInterval(-600), level: .info, text: "Ziel analysiert · Absicht: Repo-Audit"),
+            AgentLogEntry(date: now.addingTimeInterval(-590), level: .tool, text: "Plan gebaut · 4 Schritte", tool: "plan.build"),
+            AgentLogEntry(date: now.addingTimeInterval(-580), level: .tool, text: "Repos prüfen · repo.check", tool: "repo.check"),
+            AgentLogEntry(date: now.addingTimeInterval(-560), level: .result, text: "4 Repos grün", tool: "repo.check"),
+        ]
+
+        tasks = [newsTask, repotask]
 
         history = [
             AgentTask(title: "Mail-Triage Montag",
                       goal: "Sortiere das Wochenend-Postfach und markiere alles Dringende",
                       autonomy: .suggest,
+                      intent: .mailTriage,
                       status: .done,
                       steps: [
-                        TaskStep(title: "Postfach scannen", detail: "24 Mails", state: .done),
-                        TaskStep(title: "Wichtigkeit einordnen", detail: "3 dringend", state: .done),
-                        TaskStep(title: "Antworten vorbereiten", detail: "2 Entwürfe", state: .done),
+                        TaskStep(title: "Postfach scannen", detail: "24 Mails", tool: "mail.triage", state: .done, result: "24 ungelesen"),
+                        TaskStep(title: "Wichtigkeit einordnen", detail: "3 dringend", tool: "mail.rank", state: .done, result: "3 dringend"),
+                        TaskStep(title: "Antworten vorbereiten", detail: "2 Entwürfe", tool: "mail.draft", state: .done, result: "2 Entwürfe"),
                       ],
                       createdAt: now.addingTimeInterval(-90000),
                       finishedAt: now.addingTimeInterval(-89000),
-                      summary: "24 Mails sortiert, 2 Antwortentwürfe liegen als Freigabe bereit."),
+                      summary: "24 Mails sortiert, 2 Antwortentwürfe liegen als Freigabe bereit. Nichts wurde gesendet."),
             AgentTask(title: "Repo-Gesundheit prüfen",
                       goal: "Prüfe alle Repos auf rote CI und offene Dependabot-Warnungen",
                       autonomy: .act,
+                      intent: .repoAudit,
                       status: .done,
                       steps: [
-                        TaskStep(title: "CI-Läufe abrufen", detail: "12 Läufe", state: .done),
-                        TaskStep(title: "Warnungen sammeln", detail: "0 kritisch", state: .done),
+                        TaskStep(title: "CI-Läufe abrufen", detail: "12 Läufe", tool: "ci.inspect", state: .done, result: "12 Läufe"),
+                        TaskStep(title: "Warnungen sammeln", detail: "0 kritisch", tool: "repo.check", state: .done, result: "0 kritisch"),
                       ],
                       createdAt: now.addingTimeInterval(-180000),
                       finishedAt: now.addingTimeInterval(-179000),
@@ -1036,11 +1124,12 @@ final class TandemStore {
         ]
 
         audit = [
+            AuditEvent(date: now.addingTimeInterval(-360), title: "News-Scan abgeschlossen", detail: "4 Quellen, 1 neue Meldung", icon: "newspaper", kind: .scan),
             AuditEvent(date: now.addingTimeInterval(-600), title: "GitHub-Scan abgeschlossen", detail: "4 Repos, 0 Fehler", icon: "chevron.left.forwardslash.chevron.right", kind: .scan),
-            AuditEvent(date: now.addingTimeInterval(-1500), title: "Aufgabe gestartet", detail: "Playtest-Vault: Changelog für v0.9", icon: "play.circle.fill", kind: .task),
+            AuditEvent(date: now.addingTimeInterval(-1500), title: "Aufgabe gestartet", detail: "GTA-6-News-Lage", icon: "play.circle.fill", kind: .task),
             AuditEvent(date: now.addingTimeInterval(-2400), title: "Freigabe vorbereitet", detail: "Antwort an Lisa Breuer", icon: "envelope.badge", kind: .approval),
             AuditEvent(date: now.addingTimeInterval(-7200), title: "Freigabe vorbereitet", detail: "Alte Build-Artefakte löschen", icon: "trash.fill", kind: .approval),
-            AuditEvent(date: now.addingTimeInterval(-18000), title: "Preview freigeschaltet", detail: "Invite-Key TANDEM-2026 eingelöst", icon: "key.fill", kind: .system),
+            AuditEvent(date: now.addingTimeInterval(-18000), title: "Clearance freigegeben", detail: "Invite-Key JOEL-VIP eingelöst", icon: "key.fill", kind: .system),
             AuditEvent(date: now.addingTimeInterval(-86400), title: "Gedächtnis ergänzt", detail: "Projekt Tandem mit Release-Plan", icon: "brain.head.profile", kind: .memory),
         ]
 
@@ -1049,7 +1138,7 @@ final class TandemStore {
                         facts: ["Joel, Köln", "Entwickler — baut unter anderem GTA-6-Hub und Playtest Vault", "Spricht Deutsch, mag trockenen Humor"],
                         updatedAt: now, pinned: true),
             MemoryTopic(emoji: "🛠️", title: "Projekte",
-                        facts: ["gta6-hub: SwiftUI-News-Portal, v2.0.0 mit Neon-Vice-Kulisse", "playtest-vault: Testmanagement, v0.9 in Arbeit", "tandem-agent: dieser Agent, 1.1.0 Leonida Edition"],
+                        facts: ["gta6-hub: SwiftUI-News-Portal, v2.0.0", "playtest-vault: Testmanagement, v0.9 in Arbeit", "tandem-agent: dieser Agent, 1.2.0 The Autonomous Agent"],
                         updatedAt: now.addingTimeInterval(-7200)),
             MemoryTopic(emoji: "👵", title: "Familie",
                         facts: ["Oma lebt in der Nähe, iPhone-Hilfe per Telefon", "Nächster Arzttermin Donnerstag, 11:00"],
@@ -1088,6 +1177,7 @@ final class TandemStore {
         if !inviteKeys.isEmpty { return }
         inviteKeys = [
             InviteKey(code: "JOEL-VIP", createdAt: now.addingTimeInterval(-200000), redeemed: true, redeemedAt: now.addingTimeInterval(-18000)),
+            InviteKey(code: "OCEAN-DRIVE", createdAt: now.addingTimeInterval(-190000)),
             InviteKey(code: "TNDM-7K2M-9QX4", createdAt: now.addingTimeInterval(-86000)),
         ]
     }
@@ -1106,13 +1196,13 @@ final class TandemStore {
         if arguments.contains("-QAOnboard") {
             hasUnlocked = true
             hasOnboarded = false
-            unlockedKey = "TANDEM-2026"
+            unlockedKey = "JOEL-VIP"
             isFounder = true
             return
         }
         hasUnlocked = true
         hasOnboarded = true
-        unlockedKey = "TANDEM-2026"
+        unlockedKey = "JOEL-VIP"
         isFounder = true
 
         if let index = arguments.firstIndex(of: "-QAStartTab"), index + 1 < arguments.count,
@@ -1130,7 +1220,7 @@ final class TandemStore {
     private func seedQAChat() {
         messages = [
             ChatMessage(role: .user, text: "Was steht heute an und was ist mit den Mails?", date: Date().addingTimeInterval(-180)),
-            ChatMessage(role: .agent, text: DemoBrain.plan(for: "heute", context: demoContext).text, date: Date().addingTimeInterval(-170), engine: "Tandem Simulator"),
+            ChatMessage(role: .agent, text: DemoBrain.plan(for: "heute", context: agentContext).text, date: Date().addingTimeInterval(-170), engine: "Tandem Agent"),
         ]
     }
     #endif

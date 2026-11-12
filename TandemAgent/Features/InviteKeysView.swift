@@ -30,7 +30,7 @@ struct InviteKeysView: View {
                     }
                 }
 
-                SectionHeader(title: "Leonida Master-Keys", subtitle: nil, icon: "crown.fill", trailing: "immer gültig")
+                SectionHeader(title: "Clearance-Codes", subtitle: nil, icon: "crown.fill", trailing: "immer gültig")
                 GlassCard(tint: VicePalette.gold, glow: false, padding: 8) {
                     VStack(spacing: 0) {
                         ForEach(InviteKeys.masterKeys, id: \.self) { master in
@@ -77,15 +77,8 @@ struct InviteKeysView: View {
         GlassCard(tint: VicePalette.magenta, glow: true, padding: 18) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(LinearGradient(colors: [VicePalette.gold, VicePalette.coral, VicePalette.magenta],
-                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 48, height: 48)
-                            .shadow(color: VicePalette.magenta.opacity(0.75), radius: 14)
-                        PalmGlyph(tint: Color(red: 0.05, green: 0.01, blue: 0.10), rim: nil)
-                            .frame(width: 26, height: 30)
-                    }
+                    AgentEmblem(tint: VicePalette.gold, rim: VicePalette.magenta, animated: false)
+                        .frame(width: 50, height: 50)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Text("VIP FOUNDER")
@@ -94,7 +87,7 @@ struct InviteKeysView: View {
                                 .foregroundStyle(LinearGradient(colors: [.white, VicePalette.gold],
                                                                 startPoint: .top, endPoint: .bottom))
                                 .shadow(color: VicePalette.gold.opacity(0.55), radius: 10)
-                            StatusBadge(text: "Leonida", tint: VicePalette.cyan, icon: "sun.horizon.fill")
+                            StatusBadge(text: "Clearance", tint: VicePalette.cyan, icon: "key.fill")
                         }
                         Text("Eingelöst mit \(store.unlockedKey.isEmpty ? "—" : store.unlockedKey)")
                             .font(.system(size: 10.5, weight: .medium, design: .rounded))
@@ -134,7 +127,7 @@ struct InviteKeysView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle.fill")
-                Text("Neuen Vice-Key erzeugen")
+                Text("Neuen Invite-Code erzeugen")
             }
             .frame(maxWidth: .infinity)
         }

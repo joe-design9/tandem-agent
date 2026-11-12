@@ -2,14 +2,16 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(TandemStore.self) private var store
+    @State private var showProviderSettings = false
 
     var body: some View {
         @Bindable var store = store
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    AIProviderBanner(openSettings: { showProviderSettings = true })
                     backboneCard
-                    section("Backbone", icon: "cpu") {
+                    section("KI-Provider", icon: "cpu") {
                         NavigationLink {
                             ProviderSettingsView()
                         } label: {
@@ -35,7 +37,7 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
                     }
 
-                    section("Vice City Design", icon: "sun.horizon.fill") {
+                    section("Design", icon: "circle.hexagongrid.fill") {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 9) {
                                 ForEach(GlacierTheme.allCases) { theme in
@@ -52,15 +54,9 @@ struct SettingsView: View {
                                 }
                                 Spacer(minLength: 0)
                             }
-                            Text("Akzent: \(store.accentChoice.title)")
+                            Text("Akzent: \(store.accentChoice.title) · Bühne immer dunkel")
                                 .font(.system(size: 10.5, weight: .medium, design: .rounded))
                                 .foregroundStyle(.secondary)
-                            NeonDivider()
-                            HStack(spacing: 4) {
-                                ForEach(Appearance.allCases) { appearance in
-                                    appearanceButton(appearance)
-                                }
-                            }
                         }
                     }
 
@@ -150,13 +146,16 @@ struct SettingsView: View {
             .scrollIndicators(.hidden)
             .navigationTitle("Mehr")
             .navigationBarTitleDisplayMode(.large)
+            .navigationDestination(isPresented: $showProviderSettings) {
+                ProviderSettingsView()
+            }
         }
     }
 
     private var version: String {
-        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "2"
-        return "\(short) (\(build)) · Leonida"
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "3"
+        return "\(short) (\(build)) · Autonomous"
     }
 
     private var backboneCard: some View {
@@ -301,27 +300,25 @@ struct SettingsView: View {
         switch theme {
         case .electricVice:
             return LinearGradient(stops: [
-                .init(color: Color(red: 0.16, green: 0.02, blue: 0.34), location: 0.0),
-                .init(color: Color(red: 0.86, green: 0.09, blue: 0.49), location: 0.42),
-                .init(color: VicePalette.coral, location: 0.62),
-                .init(color: VicePalette.gold, location: 0.74),
-                .init(color: Color(red: 0.10, green: 0.02, blue: 0.18), location: 0.78),
-                .init(color: Color(red: 0.05, green: 0.01, blue: 0.10), location: 1.0),
-            ], startPoint: .top, endPoint: .bottom)
+                .init(color: Color(red: 0.09, green: 0.02, blue: 0.13), location: 0.0),
+                .init(color: VicePalette.obsidian, location: 0.40),
+                .init(color: Color(red: 0.30, green: 0.04, blue: 0.22), location: 0.72),
+                .init(color: Color(red: 0.02, green: 0.10, blue: 0.14), location: 1.0),
+            ], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .aurora:
-            return LinearGradient(colors: [Color(red: 0.06, green: 0.07, blue: 0.22),
-                                           Color(red: 0.18, green: 0.42, blue: 0.45),
-                                           store.accent.opacity(0.75)],
+            return LinearGradient(colors: [Color(red: 0.02, green: 0.08, blue: 0.10),
+                                           Color(red: 0.04, green: 0.20, blue: 0.22),
+                                           VicePalette.mint.opacity(0.45)],
                                   startPoint: .topLeading, endPoint: .bottomTrailing)
         case .neonVice:
-            return LinearGradient(colors: [Color(red: 0.18, green: 0.02, blue: 0.28),
-                                           Color(red: 0.85, green: 0.12, blue: 0.48),
-                                           Color(red: 1.0, green: 0.62, blue: 0.35)],
+            return LinearGradient(colors: [Color(red: 0.10, green: 0.01, blue: 0.14),
+                                           Color(red: 0.36, green: 0.04, blue: 0.30),
+                                           VicePalette.hotPink.opacity(0.55)],
                                   startPoint: .topLeading, endPoint: .bottomTrailing)
         case .titanium:
-            return LinearGradient(colors: [Color(red: 0.14, green: 0.15, blue: 0.17),
-                                           Color(red: 0.35, green: 0.37, blue: 0.40),
-                                           Color(red: 0.10, green: 0.11, blue: 0.12)],
+            return LinearGradient(colors: [Color(red: 0.10, green: 0.11, blue: 0.13),
+                                           Color(red: 0.26, green: 0.28, blue: 0.31),
+                                           Color(red: 0.06, green: 0.07, blue: 0.08)],
                                   startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
@@ -352,29 +349,6 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    private func appearanceButton(_ appearance: Appearance) -> some View {
-        let selected = store.appearance == appearance
-        return Button {
-            withAnimation(.easeInOut(duration: 0.25)) { store.appearance = appearance }
-            Haptics.selection()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: appearance.icon).font(.system(size: 10, weight: .semibold))
-                Text(appearance.title).font(.system(size: 10.5, weight: .medium, design: .rounded))
-            }
-            .foregroundStyle(selected ? Color.black.opacity(0.85) : .secondary)
-            .padding(.vertical, 7)
-            .frame(maxWidth: .infinity)
-            .background {
-                if selected {
-                    Capsule().fill(store.accent.gradient)
-                } else {
-                    Capsule().fill(Color.white.opacity(0.06))
-                }
-            }
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 // MARK: - Provider
@@ -457,7 +431,7 @@ struct ProviderSettingsView: View {
             .padding(.bottom, 30)
         }
         .scrollIndicators(.hidden)
-        .navigationTitle("Backbone")
+        .navigationTitle("KI-Provider")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             keyDraft = store.apiKey(for: store.provider)
@@ -696,5 +670,166 @@ struct ProviderSettingsView: View {
             .font(.system(size: 9, weight: .bold, design: .rounded))
             .tracking(1.1)
             .foregroundStyle(.tertiary)
+    }
+}
+
+// MARK: - KI-Provider-Banner
+
+/// Der auffälligste Block in den Einstellungen: ein Key schaltet aus dem
+/// lokalen Simulator ein echtes Modell — und damit die volle Power.
+struct AIProviderBanner: View {
+    @Environment(TandemStore.self) private var store
+    var openSettings: () -> Void
+
+    private let featured: [ProviderID] = [.anthropic, .openai, .deepseek, .openrouter]
+
+    var body: some View {
+        GlassCard(tint: store.accent, glow: true, padding: 18) {
+            VStack(alignment: .leading, spacing: 15) {
+                HStack(spacing: 8) {
+                    Insignia(text: "Echte KI", tint: VicePalette.cyan, icon: "sparkles")
+                    Spacer(minLength: 0)
+                    StatusBadge(text: store.isSimulator ? "Simulator" : "Modell aktiv",
+                                tint: store.isSimulator ? VicePalette.gold : VicePalette.mint,
+                                icon: store.isSimulator ? "cpu" : "checkmark.seal.fill")
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Ein Key, volle Agenten-Power")
+                        .font(.system(size: 19, weight: .semibold))
+                        .fontWidth(.condensed)
+                        .foregroundStyle(Color.white.opacity(0.95))
+                    Text("Der Simulator plant lokal. Ein Key schaltet die volle Claude-Power frei — oder GPT, DeepSeek, OpenRouter. Dieselben Werkzeuge, dieselben Pläne, nur mit echtem Modell im Rücken.")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Color.white.opacity(0.46))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                VStack(spacing: 8) {
+                    ForEach(featured) { provider in
+                        providerRow(provider)
+                    }
+                }
+
+                Button {
+                    Haptics.tap()
+                    openSettings()
+                } label: {
+                    HStack(spacing: 5) {
+                        Text("Alle Provider und Modelle")
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 8, weight: .bold))
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.62))
+                }
+                .buttonStyle(.plain)
+
+                Text("Keys liegen im iOS-Keychain und gehen nur an den gewählten Anbieter. Ohne Key bleibt der Simulator aktiv.")
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(Color.white.opacity(0.26))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func providerRow(_ provider: ProviderID) -> some View {
+        let hasKey = store.keyPresence[provider.rawValue] == true
+        let isCurrent = store.provider == provider
+        let result = store.testProviderID == provider.rawValue ? store.testResult : nil
+        let testing = store.isTesting && store.testProviderID == provider.rawValue
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                Image(systemName: provider.icon)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(provider.tint)
+                    .frame(width: 30, height: 30)
+                    .background {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(provider.tint.opacity(0.09))
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(provider.tint.opacity(0.18), lineWidth: 0.5)
+                    }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 5) {
+                        Text(provider.title)
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.88))
+                        if isCurrent {
+                            Circle().fill(provider.tint).frame(width: 4, height: 4)
+                        }
+                    }
+                    Text(modelHint(provider))
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(Color.white.opacity(0.32))
+                }
+
+                Spacer(minLength: 0)
+
+                Button {
+                    Haptics.tap()
+                    store.testProvider(provider)
+                } label: {
+                    HStack(spacing: 4) {
+                        if testing {
+                            ProgressView().controlSize(.mini).tint(provider.tint)
+                        } else {
+                            Image(systemName: hasKey ? "bolt.horizontal.circle" : "key")
+                                .font(.system(size: 9, weight: .semibold))
+                        }
+                        Text(testing ? "Teste…" : (hasKey ? "Testen" : "Key"))
+                    }
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(provider.tint)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background { Capsule().fill(provider.tint.opacity(0.10)) }
+                    .overlay { Capsule().strokeBorder(provider.tint.opacity(0.22), lineWidth: 0.5) }
+                }
+                .buttonStyle(.plain)
+                .disabled(store.isTesting)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                store.provider = provider
+                Haptics.selection()
+                openSettings()
+            }
+
+            if let result {
+                Text(result)
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(result.hasPrefix("Verbunden")
+                                     ? VicePalette.mint
+                                     : VicePalette.coral)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 40)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(isCurrent ? 0.05 : 0.025))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(isCurrent ? provider.tint.opacity(0.28) : Color.white.opacity(0.05),
+                                      lineWidth: 0.5)
+                }
+        }
+    }
+
+    private func modelHint(_ provider: ProviderID) -> String {
+        switch provider {
+        case .anthropic: return "Claude Opus 4.5 · Sonnet 4.5 · Haiku 4.5"
+        case .openai: return "GPT-4o · GPT-4.1 · o4-mini"
+        case .deepseek: return "DeepSeek Chat · Reasoner"
+        case .openrouter: return "Claude, GPT, Gemini, Llama — ein Key"
+        default: return provider.subtitle
+        }
     }
 }

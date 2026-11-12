@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// Der Kommandostand: was der Agent gerade tut, was auf dem Tisch liegt
+/// und womit du ihn heute losschickst.
 struct HomeView: View {
     @Environment(TandemStore.self) private var store
     @State private var doneTodos: Set<String> = []
@@ -9,20 +11,20 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 20) {
                     header
                     statusRow
                     approvalsStrip
                     briefingCard
-                    tickerCard
-                    suggestions
+                    liveFeed
+                    launchpad
                     footer
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 6)
                 .padding(.bottom, 28)
                 .opacity(appear ? 1 : 0)
-                .offset(y: appear ? 0 : 12)
+                .offset(y: appear ? 0 : 10)
             }
             .scrollIndicators(.hidden)
             .navigationDestination(isPresented: $showApprovals) {
@@ -30,7 +32,7 @@ struct HomeView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
-                withAnimation(.easeOut(duration: 0.5)) { appear = true }
+                withAnimation(.easeOut(duration: 0.45)) { appear = true }
             }
         }
     }
@@ -38,21 +40,21 @@ struct HomeView: View {
     // MARK: Kopf
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                ViceBadge(text: store.proactiveEnabled ? "Vice City Agent Protocol" : "Protocol Paused",
-                          tint: store.proactiveEnabled ? VicePalette.magenta : VicePalette.coral,
-                          icon: store.proactiveEnabled ? "bolt.fill" : "pause.fill")
+                Insignia(text: store.proactiveEnabled ? "Autonomous Agent" : "Agent Pausiert",
+                         tint: store.proactiveEnabled ? store.accent : VicePalette.coral,
+                         icon: store.proactiveEnabled ? "circle.hexagongrid.fill" : "pause.fill")
                 Spacer(minLength: 0)
                 if store.isFounder {
-                    StatusBadge(text: "VIP Founder", tint: VicePalette.gold, icon: "crown.fill")
+                    StatusBadge(text: "Founder", tint: VicePalette.gold, icon: "crown.fill")
                 }
                 Button {
                     Haptics.tap()
                     store.selectedTab = 3
                 } label: {
                     Image(systemName: "brain.head.profile")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(VicePalette.cyan)
                         .padding(8)
                         .glassPill(tint: VicePalette.cyan)
@@ -60,34 +62,31 @@ struct HomeView: View {
                 .buttonStyle(.plain)
             }
 
-            WeazelTicker(items: ViceNews.headlines, tint: VicePalette.cyan)
+            SignalTicker(items: store.liveSignals, tint: store.accent)
 
-            Text(greeting.uppercased())
-                .font(.system(size: 27, weight: .black, design: .rounded))
-                .tracking(1.1)
+            Text(greeting)
+                .font(.system(size: 30, weight: .heavy))
+                .fontWidth(.condensed)
+                .tracking(0.2)
                 .foregroundStyle(
-                    LinearGradient(colors: [.white,
-                                            VicePalette.gold,
-                                            VicePalette.coral,
-                                            VicePalette.magenta],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(colors: [.white, Color.white.opacity(0.72)],
+                                   startPoint: .top, endPoint: .bottom)
                 )
-                .shadow(color: VicePalette.magenta.opacity(0.55), radius: 16)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
-                .padding(.top, 2)
+                .padding(.top, 4)
 
-            HStack(spacing: 5) {
-                Image(systemName: "mappin.and.ellipse")
-                    .font(.system(size: 8.5))
-                    .foregroundStyle(VicePalette.cyan)
+            HStack(spacing: 6) {
                 Text(RelativeTime.weekdayLong(Date()).uppercased())
                 Text("·")
-                Text("\(store.checkIns.count) Scans · letzter \(RelativeTime.string(from: store.lastScan))")
+                Text(store.engineLabel.uppercased())
+                Text("·")
+                Text("Letzter Scan \(RelativeTime.string(from: store.lastScan))")
             }
-            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-            .tracking(0.5)
-            .foregroundStyle(.secondary)
+            .font(.system(size: 9.5, weight: .medium))
+            .fontWidth(.condensed)
+            .tracking(0.8)
+            .foregroundStyle(Color.white.opacity(0.36))
         }
         .padding(.horizontal, 2)
     }
@@ -95,72 +94,72 @@ struct HomeView: View {
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
-        case 5..<11: return "Guten Morgen, \(store.userName)"
-        case 11..<15: return "Mahlzeit, \(store.userName)"
-        case 15..<19: return "Guten Nachmittag, \(store.userName)"
-        default: return "Guten Abend, \(store.userName)"
+        case 5..<11: return "Guten Morgen, \(store.userName)."
+        case 11..<15: return "Mahlzeit, \(store.userName)."
+        case 15..<19: return "Guten Nachmittag, \(store.userName)."
+        default: return "Guten Abend, \(store.userName)."
         }
     }
 
     private var statusRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 9) {
             statusChip(icon: "hand.raised.fill",
                        value: "\(store.pendingApprovals.count)",
                        label: "Freigaben",
                        tint: store.pendingApprovals.isEmpty ? VicePalette.cyan : VicePalette.gold) {
                 showApprovals = true
             }
-            statusChip(icon: "square.stack.3d.up.fill",
+            statusChip(icon: "bolt.horizontal.fill",
                        value: "\(store.runningTasks.count)",
-                       label: "Aufgaben",
-                       tint: VicePalette.magenta) {
+                       label: "Läufe",
+                       tint: store.accent) {
                 store.selectedTab = 1
             }
-            statusChip(icon: "checkmark.seal.fill",
+            statusChip(icon: "wrench.and.screwdriver.fill",
                        value: "\(store.audit.count)",
                        label: "Protokoll",
-                       tint: VicePalette.coral) {
+                       tint: VicePalette.mint) {
                 store.selectedTab = 1
             }
         }
     }
 
-    private func statusChip(icon: String, value: String, label: String, tint: Color, action: @escaping () -> Void) -> some View {
+    private func statusChip(icon: String, value: String, label: String, tint: Color,
+                            action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(tint)
-                    .shadow(color: tint.opacity(0.8), radius: 6)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(value)
-                        .font(.system(size: 17, weight: .black, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white)
-                    Text(label.uppercased())
-                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                        .tracking(0.8)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
+                Text(value)
+                    .font(.system(size: 20, weight: .semibold))
+                    .fontWidth(.condensed)
+                    .monospacedDigit()
+                    .foregroundStyle(Color.white.opacity(0.94))
+                Text(label.uppercased())
+                    .font(.system(size: 8.5, weight: .heavy))
+                    .fontWidth(.expanded)
+                    .tracking(1.1)
+                    .foregroundStyle(Color.white.opacity(0.34))
             }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 9)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.clear)
-                    .glassEffect(.regular.tint(tint.opacity(0.18)),
-                                 in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.ultraThinMaterial)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(colors: [tint.opacity(0.85), VicePalette.cyan.opacity(0.35)],
-                                               startPoint: .topLeading, endPoint: .bottomTrailing),
-                                lineWidth: 1
-                            )
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(tint.opacity(0.07))
                     }
-                    .shadow(color: tint.opacity(0.35), radius: 12, y: 3)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(colors: [Color.white.opacity(0.26), tint.opacity(0.18), Color.white.opacity(0.03)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 0.5
+                    )
             }
         }
         .buttonStyle(.plain)
@@ -176,13 +175,12 @@ struct HomeView: View {
                           trailing: "\(store.pendingApprovals.count) offen")
 
             if store.pendingApprovals.isEmpty {
-                GlassCard(tint: VicePalette.cyan, glow: true, padding: 16) {
+                GlassCard(tint: VicePalette.cyan, glow: false, padding: 16) {
                     HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle.fill")
+                        Image(systemName: "checkmark.circle")
                             .foregroundStyle(VicePalette.cyan)
-                            .shadow(color: VicePalette.cyan.opacity(0.8), radius: 8)
-                        Text("Nichts offen. Tandem meldet sich, sobald etwas deine Entscheidung braucht.")
-                            .font(.system(size: 12.5, design: .rounded))
+                        Text("Nichts offen. Der Agent meldet sich, sobald etwas deine Entscheidung braucht.")
+                            .font(.system(size: 12.5))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -207,59 +205,59 @@ struct HomeView: View {
     }
 
     private func approvalChip(_ approval: ApprovalRequest) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 6) {
                 Image(systemName: approval.kind.icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(approval.kind.tint)
-                    .shadow(color: approval.kind.tint.opacity(0.8), radius: 6)
                 Text(approval.kind.title.uppercased())
-                    .font(.system(size: 8.5, weight: .black, design: .rounded))
-                    .tracking(1)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 8, weight: .heavy))
+                    .fontWidth(.expanded)
+                    .tracking(1.1)
+                    .foregroundStyle(Color.white.opacity(0.38))
                 Spacer(minLength: 4)
                 Circle()
                     .fill(approval.risk.color)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: approval.risk.color, radius: 5)
+                    .frame(width: 5, height: 5)
             }
             Text(approval.title)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.94))
                 .multilineTextAlignment(.leading)
                 .lineLimit(2)
             Text(approval.summary)
-                .font(.system(size: 11, design: .rounded))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.white.opacity(0.42))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
             HStack(spacing: 4) {
                 Text("PRÜFEN")
-                    .tracking(0.8)
+                    .tracking(1.0)
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 8, weight: .black))
+                    .font(.system(size: 8, weight: .bold))
             }
-            .font(.system(size: 9.5, weight: .black, design: .rounded))
+            .font(.system(size: 9, weight: .heavy))
+            .fontWidth(.condensed)
             .foregroundStyle(approval.kind.tint)
         }
         .padding(13)
-        .frame(width: 208, height: 132, alignment: .topLeading)
+        .frame(width: 210, height: 136, alignment: .topLeading)
         .background {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.clear)
-                .glassEffect(.regular.tint(approval.kind.tint.opacity(0.16)),
-                             in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .fill(.ultraThinMaterial)
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(colors: [approval.kind.tint.opacity(0.75),
-                                                    VicePalette.magenta.opacity(0.35),
-                                                    VicePalette.cyan.opacity(0.55)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing),
-                            lineWidth: 1
-                        )
+                        .fill(approval.kind.tint.opacity(0.06))
                 }
-                .shadow(color: approval.kind.tint.opacity(0.28), radius: 14, y: 4)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(colors: [Color.white.opacity(0.26), approval.kind.tint.opacity(0.28)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 0.5
+                )
         }
     }
 
@@ -268,84 +266,61 @@ struct HomeView: View {
     private var briefingCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 8) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("LEONIDA MORNING DISPATCH")
-                        .font(.system(size: 12, weight: .black, design: .rounded))
-                        .tracking(1.7)
-                        .foregroundStyle(VicePalette.sunset)
-                        .shadow(color: VicePalette.coral.opacity(0.55), radius: 10)
-                    Text("Vice City Brief · \(RelativBriefing())")
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .tracking(0.4)
-                        .foregroundStyle(.secondary)
+                SectionHeader(title: "Tagesbriefing", subtitle: nil, icon: "sun.horizon.fill",
+                              trailing: RelativeTime.string(from: store.briefing.generatedAt))
+                Button {
+                    store.regenerateBriefing()
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(VicePalette.cyan)
+                        .padding(6)
+                        .glassPill(tint: VicePalette.cyan)
                 }
-                Spacer(minLength: 0)
-                StatusBadge(text: "Live", tint: VicePalette.cyan, icon: "dot.radiowaves.left.and.right")
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 4)
 
             GlassCard(tint: store.accent, glow: true, padding: 18) {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(alignment: .top, spacing: 10) {
-                        VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("FOKUS")
+                                .font(.system(size: 8.5, weight: .heavy))
+                                .fontWidth(.expanded)
+                                .tracking(1.6)
+                                .foregroundStyle(store.accent.opacity(0.9))
                             Text(store.briefing.focus)
-                                .font(.system(size: 14.5, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Color.white.opacity(0.94))
                                 .fixedSize(horizontal: false, vertical: true)
-                            HStack(spacing: 5) {
-                                Image(systemName: "antenna.radiowaves.left.and.right")
-                                    .font(.system(size: 8, weight: .bold))
-                                Text("6 Quellen · Postfach, Kalender, GitHub, Gerät")
-                                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                            }
-                            .foregroundStyle(VicePalette.cyan.opacity(0.8))
                         }
                         Spacer(minLength: 0)
-                        Button {
-                            store.regenerateBriefing()
-                        } label: {
-                            ZStack {
-                                Circle()
-                                    .fill(VicePalette.cyan.opacity(0.14))
-                                    .frame(width: 30, height: 30)
-                                    .overlay {
-                                        Circle().strokeBorder(VicePalette.cyan.opacity(0.55), lineWidth: 0.8)
-                                    }
-                                if store.isRegeneratingBriefing {
-                                    ProgressView().controlSize(.mini).tint(.white)
-                                } else {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(VicePalette.cyan)
-                                }
-                            }
-                            .shadow(color: VicePalette.cyan.opacity(0.45), radius: 8)
+                        if store.isRegeneratingBriefing {
+                            ProgressView().controlSize(.mini).tint(.white)
                         }
-                        .buttonStyle(.plain)
                     }
 
                     weatherRow
 
                     NeonDivider()
 
-                    VStack(spacing: 10) {
+                    VStack(spacing: 12) {
                         ForEach(store.briefing.agenda) { item in
                             HStack(alignment: .top, spacing: 10) {
                                 Text(item.time)
-                                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                    .monospacedDigit()
-                                    .foregroundStyle(item.highlight ? VicePalette.gold : .secondary)
-                                    .frame(width: 38, alignment: .leading)
-                                Image(systemName: item.icon)
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(item.highlight ? VicePalette.coral : .secondary)
-                                    .frame(width: 14)
-                                VStack(alignment: .leading, spacing: 1) {
+                                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(item.highlight ? VicePalette.gold : Color.white.opacity(0.42))
+                                    .frame(width: 40, alignment: .leading)
+                                Rectangle()
+                                    .fill(item.highlight ? VicePalette.gold : Color.white.opacity(0.14))
+                                    .frame(width: 1.5, height: 26)
+                                VStack(alignment: .leading, spacing: 2) {
                                     Text(item.title)
-                                        .font(.system(size: 12.5, weight: item.highlight ? .bold : .medium, design: .rounded))
+                                        .font(.system(size: 12.5, weight: item.highlight ? .semibold : .regular))
+                                        .foregroundStyle(Color.white.opacity(item.highlight ? 0.96 : 0.82))
                                     Text(item.detail)
-                                        .font(.system(size: 10.5, design: .rounded))
-                                        .foregroundStyle(.secondary)
+                                        .font(.system(size: 10.5))
+                                        .foregroundStyle(Color.white.opacity(0.38))
                                 }
                                 Spacer(minLength: 0)
                             }
@@ -354,26 +329,27 @@ struct HomeView: View {
 
                     if !store.briefing.todos.isEmpty {
                         NeonDivider()
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 9) {
                             Text("OFFEN")
-                                .font(.system(size: 9, weight: .black, design: .rounded))
-                                .tracking(1.4)
-                                .foregroundStyle(VicePalette.gold.opacity(0.85))
+                                .font(.system(size: 8.5, weight: .heavy))
+                                .fontWidth(.expanded)
+                                .tracking(1.6)
+                                .foregroundStyle(Color.white.opacity(0.38))
                             ForEach(store.briefing.todos, id: \.self) { todo in
                                 Button {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
                                         if doneTodos.contains(todo) { doneTodos.remove(todo) } else { doneTodos.insert(todo) }
                                     }
                                     Haptics.tap()
                                 } label: {
-                                    HStack(spacing: 8) {
+                                    HStack(spacing: 9) {
                                         Image(systemName: doneTodos.contains(todo) ? "checkmark.circle.fill" : "circle")
                                             .font(.system(size: 12))
-                                            .foregroundStyle(doneTodos.contains(todo) ? VicePalette.cyan : Color.white.opacity(0.3))
+                                            .foregroundStyle(doneTodos.contains(todo) ? VicePalette.mint : Color.white.opacity(0.22))
                                         Text(todo)
-                                            .font(.system(size: 12, design: .rounded))
+                                            .font(.system(size: 12))
                                             .strikethrough(doneTodos.contains(todo), color: .secondary)
-                                            .foregroundStyle(doneTodos.contains(todo) ? .secondary : .primary)
+                                            .foregroundStyle(doneTodos.contains(todo) ? Color.white.opacity(0.38) : Color.white.opacity(0.86))
                                         Spacer(minLength: 0)
                                     }
                                 }
@@ -385,11 +361,11 @@ struct HomeView: View {
                     HStack(alignment: .top, spacing: 7) {
                         Image(systemName: "moon.stars.fill")
                             .font(.system(size: 9))
-                            .foregroundStyle(VicePalette.violet)
+                            .foregroundStyle(VicePalette.violet.opacity(0.9))
                             .padding(.top, 1)
                         Text(store.briefing.nightNote)
-                            .font(.system(size: 10, design: .rounded))
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.white.opacity(0.34))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -397,89 +373,71 @@ struct HomeView: View {
         }
     }
 
-    private func RelativBriefing() -> String {
-        RelativeTime.string(from: store.briefing.generatedAt)
-    }
-
     private var weatherRow: some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(RadialGradient(colors: [VicePalette.gold.opacity(0.35), .clear],
-                                         center: .center, startRadius: 2, endRadius: 30))
-                    .frame(width: 46, height: 46)
-                Image(systemName: store.briefing.weatherIcon)
-                    .font(.system(size: 26, weight: .light))
-                    .symbolRenderingMode(.multicolor)
-            }
-            .frame(width: 40)
+            Image(systemName: store.briefing.weatherIcon)
+                .font(.system(size: 24, weight: .light))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Color.white.opacity(0.82))
+                .frame(width: 34)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 5) {
-                    Text("LEONIDA WETTER")
-                        .font(.system(size: 8, weight: .black, design: .rounded))
-                        .tracking(1.1)
-                        .foregroundStyle(VicePalette.gold.opacity(0.9))
-                }
                 HStack(spacing: 6) {
                     Text(store.briefing.temperature)
-                        .font(.system(size: 20, weight: .black, design: .rounded))
-                    Text(store.city)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(0.6)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 18, weight: .semibold))
+                        .fontWidth(.condensed)
+                    Text(store.city.uppercased())
+                        .font(.system(size: 9, weight: .heavy))
+                        .fontWidth(.expanded)
+                        .tracking(1.1)
+                        .foregroundStyle(Color.white.opacity(0.32))
                 }
                 Text(store.briefing.weather)
-                    .font(.system(size: 11, design: .rounded))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.white.opacity(0.44))
             }
             Spacer(minLength: 0)
             Text(store.briefing.weatherDetail)
-                .font(.system(size: 9.5, design: .rounded))
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 9.5))
+                .foregroundStyle(Color.white.opacity(0.30))
                 .multilineTextAlignment(.trailing)
-                .frame(maxWidth: 132, alignment: .trailing)
+                .frame(maxWidth: 138, alignment: .trailing)
         }
     }
 
-    // MARK: Proaktive Check-ins
+    // MARK: Agenten-Log
 
-    private var tickerCard: some View {
+    private var liveFeed: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "ViceNet Monitor", subtitle: nil, icon: "dot.radiowaves.left.and.right",
-                          trailing: "Leonida Dispatch · 15 Min.")
-            GlassCard(tint: VicePalette.magenta, glow: true, padding: 16) {
+            SectionHeader(title: "Agent-Log", subtitle: nil, icon: "dot.radiowaves.left.and.right",
+                          trailing: "\(store.checkIns.count) Signale")
+            GlassCard(tint: nil, glow: false, padding: 14) {
                 VStack(spacing: 0) {
                     ForEach(Array(store.checkIns.prefix(5))) { checkIn in
                         HStack(alignment: .top, spacing: 10) {
-                            ZStack {
-                                Circle()
-                                    .fill(checkIn.tone.color.opacity(0.18))
-                                    .frame(width: 26, height: 26)
-                                Image(systemName: checkIn.icon)
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(checkIn.tone.color)
-                            }
-                            .shadow(color: checkIn.tone.color.opacity(0.5), radius: 6)
+                            Circle()
+                                .fill(checkIn.tone.color)
+                                .frame(width: 6, height: 6)
+                                .shadow(color: checkIn.tone.color.opacity(0.8), radius: 4)
+                                .padding(.top, 5)
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 6) {
                                     Text(checkIn.title)
-                                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(Color.white.opacity(0.88))
                                     Spacer(minLength: 0)
                                     Text(RelativeTime.string(from: checkIn.date))
-                                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                                        .foregroundStyle(.tertiary)
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(Color.white.opacity(0.26))
                                 }
                                 Text(checkIn.detail)
-                                    .font(.system(size: 11, design: .rounded))
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(Color.white.opacity(0.40))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 9)
                         if checkIn.id != store.checkIns.prefix(5).last?.id {
-                            NeonDivider()
-                                .padding(.leading, 36)
-                                .opacity(0.6)
+                            NeonDivider().padding(.leading, 16)
                         }
                     }
                 }
@@ -487,76 +445,72 @@ struct HomeView: View {
         }
     }
 
-    // MARK: Vorschläge
+    // MARK: Startrampe
 
-    private var suggestions: some View {
+    private var launchpad: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Dringende Vorschläge", subtitle: nil, icon: "sparkles", trailing: "1-Klick-Delegation")
-            VStack(spacing: 10) {
-                suggestionCard(icon: "envelope.fill",
-                               tint: VicePalette.cyan,
-                               title: "Lisa antworten und Freitag zusagen",
-                               detail: "Entwurf liegt fertig vor — 1 Freigabe, dann ist es raus.",
-                               action: "Freigeben") {
-                    showApprovals = true
+            SectionHeader(title: "Ein Ziel genügt", subtitle: nil, icon: "bolt.horizontal.fill",
+                          trailing: "Agent starten")
+            VStack(spacing: 9) {
+                launchCard(icon: "newspaper.fill",
+                           tint: VicePalette.cyan,
+                           title: "GTA-6-News überwachen",
+                           detail: "web.scan → news.rank → brief.compose",
+                           action: "Starten") {
+                    store.createTask(goal: "Überwache die GTA-6-News und melde nur, was sich wirklich ändert")
                 }
-                suggestionCard(icon: "doc.badge.gearshape",
-                               tint: VicePalette.magenta,
-                               title: "Changelog für Tandem 1.1.0",
-                               detail: "Commits seit v1.0.0 clustern und Release-Notes schreiben.",
-                               action: "Delegieren") {
-                    store.createTask(goal: "Sammle alle Commits seit v1.0.0 und schreibe den Changelog für Tandem 1.1.0")
+                launchCard(icon: "chevron.left.forwardslash.chevron.right",
+                           tint: VicePalette.mint,
+                           title: "GitHub CI prüfen",
+                           detail: "repo.check → ci.inspect → Synthese",
+                           action: "Starten") {
+                    store.createTask(goal: "Prüfe meine GitHub CI Pipelines und sage mir, was rot ist")
                 }
-                suggestionCard(icon: "phone.badge.checkmark",
-                               tint: VicePalette.gold,
-                               title: "Oma anrufen — Arzttermin Donnerstag",
-                               detail: "Der Termin steht im Kalender, sie hat zuletzt gefragt.",
-                               action: "Erinnern") {
-                    store.createTask(title: "Erinnerung: Oma anrufen",
-                                     goal: "Erinnere mich heute Abend daran, Oma wegen des Arzttermins am Donnerstag anzurufen")
+                launchCard(icon: "sun.horizon.fill",
+                           tint: VicePalette.gold,
+                           title: "Morgen-Briefing bauen",
+                           detail: "calendar.read → mail.triage → brief.compose",
+                           action: "Starten") {
+                    store.createTask(goal: "Stelle mein Morgen-Briefing aus Kalender, Postfach und Wetter zusammen")
                 }
             }
         }
     }
 
-    private func suggestionCard(icon: String, tint: Color, title: String, detail: String,
-                                action: String, perform: @escaping () -> Void) -> some View {
-        GlassCard(tint: tint, glow: false, padding: 15) {
-            HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(tint.opacity(0.20))
-                        .frame(width: 36, height: 36)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(tint.opacity(0.55), lineWidth: 0.8)
-                        }
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(tint)
-                }
-                .shadow(color: tint.opacity(0.35), radius: 8)
+    private func launchCard(icon: String, tint: Color, title: String, detail: String,
+                            action: String, perform: @escaping () -> Void) -> some View {
+        GlassCard(tint: tint, glow: false, padding: 14) {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(tint)
+                    .frame(width: 34, height: 34)
+                    .background {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(tint.opacity(0.10))
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .strokeBorder(tint.opacity(0.22), lineWidth: 0.5)
+                    }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.92))
                     Text(detail)
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .font(.system(size: 9.5, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.32))
                 }
                 Spacer(minLength: 0)
                 Button(action: perform) {
                     Text(action.uppercased())
-                        .font(.system(size: 9.5, weight: .black, design: .rounded))
-                        .tracking(0.6)
-                        .foregroundStyle(Color.black.opacity(0.85))
+                        .font(.system(size: 9, weight: .heavy))
+                        .fontWidth(.condensed)
+                        .tracking(1.0)
+                        .foregroundStyle(Color(red: 0.04, green: 0.03, blue: 0.06))
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
-                        .background {
-                            Capsule()
-                                .fill(tint)
-                                .shadow(color: tint.opacity(0.6), radius: 8)
-                        }
+                        .background { Capsule().fill(tint) }
                 }
                 .buttonStyle(.plain)
             }
@@ -564,17 +518,16 @@ struct HomeView: View {
     }
 
     private var footer: some View {
-        VStack(spacing: 8) {
-            PalmGlyph(tint: VicePalette.violet, rim: VicePalette.cyan)
-                .frame(width: 44, height: 44)
-                .shadow(color: VicePalette.magenta.opacity(0.45), radius: 12)
-            Text("Tandem hält die Stadt im Blick — riskante Aktionen stoppen immer bei dir.")
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .tracking(0.3)
-                .foregroundStyle(.tertiary)
+        VStack(spacing: 10) {
+            AgentEmblem(tint: VicePalette.magenta, rim: VicePalette.cyan)
+                .frame(width: 40, height: 40)
+                .opacity(0.8)
+            Text("Der Agent plant, ruft Werkzeuge auf und hält bei allem Riskanten an. Ausgeführt wird nur, was du freigibst.")
+                .font(.system(size: 10))
+                .foregroundStyle(Color.white.opacity(0.28))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 10)
+        .padding(.top, 8)
     }
 }
