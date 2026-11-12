@@ -565,8 +565,8 @@ enum ViceScene {
                         endPoint: CGPoint(x: 0, y: bandY + h * 0.11)))
 
         // Sonnenuntergang: Glow, Scheibe, Retrostreifen.
-        let sunCenter = CGPoint(x: w * 0.5, y: horizon - h * 0.02)
-        let sunRadius = w * 0.235
+        let sunCenter = CGPoint(x: w * 0.5, y: horizon - h * 0.085)
+        let sunRadius = w * 0.255
         context.fill(Path(ellipseIn: CGRect(x: sunCenter.x - w * 0.9, y: sunCenter.y - w * 0.9,
                                             width: w * 1.8, height: w * 1.8)),
                      with: .radialGradient(
@@ -660,11 +660,12 @@ enum ViceScene {
                          with: .color(Color(red: 1.0, green: 0.58, blue: 0.36).opacity(alpha)))
         }
 
-        // Skyline von Vice City mit Neon-Kante.
+        // Skyline von Vice City mit Neon-Kante — flach gehalten, damit die
+        // Sonne die Hauptrolle behält.
         let skyline: [(CGFloat, CGFloat, CGFloat)] = [
-            (0.00, 0.13, 0.10), (0.11, 0.09, 0.16), (0.19, 0.12, 0.08),
-            (0.30, 0.08, 0.13), (0.62, 0.10, 0.11), (0.71, 0.09, 0.17),
-            (0.80, 0.12, 0.09), (0.90, 0.11, 0.14),
+            (0.00, 0.14, 0.08), (0.12, 0.09, 0.13), (0.20, 0.11, 0.07),
+            (0.31, 0.07, 0.10), (0.72, 0.09, 0.08), (0.80, 0.10, 0.13),
+            (0.89, 0.09, 0.07), (0.96, 0.08, 0.11),
         ]
         for building in skyline {
             let rect = CGRect(x: building.0 * w,
@@ -690,9 +691,9 @@ enum ViceScene {
         }
 
         // Zwei Palmen als Markenzeichen, mit Neon-Rim.
-        drawVicePalm(&context, base: CGPoint(x: w * 0.09, y: h * 1.03), height: h * 0.44,
+        drawVicePalm(&context, base: CGPoint(x: w * 0.10, y: h * 1.03), height: h * 0.42,
                      lean: w * 0.035, color: Color(red: 0.04, green: 0.01, blue: 0.10).opacity(light ? 0.70 : 0.96))
-        drawVicePalm(&context, base: CGPoint(x: w * 0.93, y: h * 1.05), height: h * 0.35,
+        drawVicePalm(&context, base: CGPoint(x: w * 0.92, y: h * 1.05), height: h * 0.34,
                      lean: -w * 0.030, color: Color(red: 0.04, green: 0.01, blue: 0.10).opacity(light ? 0.70 : 0.96))
 
         // Treibende Neon-Partikel.
