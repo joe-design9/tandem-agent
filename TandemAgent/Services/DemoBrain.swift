@@ -34,7 +34,7 @@ enum DemoBrain {
                         text: capabilities(context))
         }
         if has("invite", "key", "einlad", "zugang", "clearance") {
-            return Plan(tools: [("memory.sync", "Zugang prüfen", "Clearance aktiv")],
+            return Plan(tools: [("memory.sync", "Zugang prüfen", "Zugang aktiv")],
                         text: inviteAnswer(context))
         }
         if has("wetter", "regen", "temperatur", "jacke", "schirm") {
@@ -78,7 +78,7 @@ enum DemoBrain {
     }
 
     private static func taskCard(_ title: String, _ subtitle: String) -> ChatCard {
-        ChatCard(kind: .task, title: title, subtitle: subtitle, icon: "bolt.horizontal.fill",
+        ChatCard(kind: .task, title: title, subtitle: subtitle, icon: "bolt.horizontal",
                  actionTitle: "Im Aufgaben-Tab ansehen", approvalID: nil, taskID: nil)
     }
 
@@ -113,9 +113,9 @@ enum DemoBrain {
 
     private static func inviteAnswer(_ c: AgentContext) -> String {
         """
-        Tandem läuft als **Research Preview** — der Zugang hängt an einem Invite-Key, nicht an einem App-Store-Account. Deine Clearance ist aktiv.
+        Tandem läuft als **Research Preview** — der Zugang hängt an einem Einladungscode, nicht an einem App-Store-Account. Dein Zugang ist aktiv.
 
-        Für Freunde: **Mehr → Invite Keys teilen**. Ein Tipp erzeugt einen Code wie `TNDM-4K7Q-9WZ2`; jeder Code schaltet genau eine Installation frei. Die Founder-Keys (`JOEL-VIP`, `VICE-VIP`, `LEONIDA-DEV`, `OCEAN-DRIVE`) bleiben dauerhaft gültig.
+        Für Freunde: **Mehr → Invite-Codes**. Ein Tipp erzeugt einen Code wie `TNDM-4K7Q-9WZ2`; jeder Code schaltet genau eine Installation frei. Die festen Codes (`JOEL-VIP`, `VICE-VIP`, `LEONIDA-DEV`, `OCEAN-DRIVE`) bleiben dauerhaft gültig.
         """
     }
 
@@ -187,7 +187,7 @@ enum DemoBrain {
         ChatCard(kind: .approval,
                  title: "Antwort an \(approval.recipient ?? "den Absender")",
                  subtitle: approval.subject ?? approval.title,
-                 icon: "envelope.fill",
+                 icon: "envelope",
                  actionTitle: "Freigabe ansehen",
                  approvalID: approval.id,
                  taskID: nil)

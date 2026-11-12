@@ -2,18 +2,15 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(TandemStore.self) private var store
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var isLight: Bool { colorScheme == .light }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            AmbientBackdrop(theme: store.themeChoice, accent: store.accent, light: isLight)
+            AppBackground(theme: store.themeChoice, accent: store.accent)
 
             Group {
                 if !store.hasUnlocked {
                     InviteGateView()
-                        .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                        .transition(.opacity)
                 } else if !store.hasOnboarded {
                     OnboardingView()
                         .transition(.opacity)
@@ -22,21 +19,18 @@ struct RootView: View {
                         .transition(.opacity)
                 }
             }
-            .animation(.easeInOut(duration: 0.45), value: store.hasUnlocked)
-            .animation(.easeInOut(duration: 0.35), value: store.hasOnboarded)
-
-            // Ruhige Vignette über allem, damit die Kanten nicht klettern.
-            ObsidianVignette(strength: isLight ? 0.35 : 1)
-                .zIndex(2)
+            .animation(.easeInOut(duration: 0.3), value: store.hasUnlocked)
+            .animation(.easeInOut(duration: 0.25), value: store.hasOnboarded)
 
             if let toast = store.toast {
                 ToastView(toast: toast)
-                    .padding(.bottom, 96)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 84)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .zIndex(3)
+                    .zIndex(2)
             }
         }
-        .animation(.spring(response: 0.42, dampingFraction: 0.8), value: store.toast)
+        .animation(.easeOut(duration: 0.25), value: store.toast)
         #if QA
         .fullScreenCover(isPresented: Binding(
             get: { store.qaScreen != nil },
@@ -54,22 +48,23 @@ struct MainTabs: View {
     var body: some View {
         @Bindable var store = store
         TabView(selection: $store.selectedTab) {
-            Tab("Heute", systemImage: "circle.hexagongrid.fill", value: 0) {
+            Tab("Heute", systemImage: "sun.max", value: 0) {
                 HomeView()
             }
-            Tab("Läufe", systemImage: "bolt.horizontal.fill", value: 1) {
+            Tab("Aufgaben", systemImage: "checklist", value: 1) {
                 TasksView()
             }
-            Tab("Agent", systemImage: "bubble.left.and.bubble.right.fill", value: 2) {
+            Tab("Chat", systemImage: "bubble.left.and.bubble.right", value: 2) {
                 ChatView()
             }
-            Tab("Gedächtnis", systemImage: "brain.head.profile", value: 3) {
+            Tab("Gedächtnis", systemImage: "brain", value: 3) {
                 MemoryView()
             }
-            Tab("Mehr", systemImage: "gearshape.fill", value: 4) {
+            Tab("Mehr", systemImage: "gearshape", value: 4) {
                 SettingsView()
             }
         }
+        .tint(store.accent)
     }
 }
 
@@ -77,27 +72,21 @@ struct ToastView: View {
     var toast: ToastMessage
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             Image(systemName: toast.style.icon)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(toast.style.color)
             Text(toast.text)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.primary)
+                .font(.system(size: 13))
+                .foregroundStyle(Palette.textPrimary)
                 .lineLimit(2)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
         .background {
-            Capsule()
-                .fill(.ultraThinMaterial)
-                .overlay { Capsule().fill(toast.style.color.opacity(0.10)) }
+            Capsule().fill(Palette.surfaceRaised)
         }
-        .overlay {
-            Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
-        }
-        .shadow(color: Color.black.opacity(0.40), radius: 16, y: 6)
-        .padding(.horizontal, 24)
+        .shadow(color: Color.black.opacity(0.30), radius: 12, y: 5)
     }
 }
 

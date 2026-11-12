@@ -1,438 +1,256 @@
 import SwiftUI
 
+/// Einstellungen im ganz normalen iOS-Format: gruppierte Listen, ein
+/// Akzent, keine eigenen Kacheln.
 struct SettingsView: View {
     @Environment(TandemStore.self) private var store
-    @State private var showProviderSettings = false
 
     var body: some View {
         @Bindable var store = store
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    AIProviderBanner(openSettings: { showProviderSettings = true })
-                    backboneCard
-                    section("KI-Provider", icon: "cpu") {
-                        NavigationLink {
-                            ProviderSettingsView()
-                        } label: {
-                            row(icon: store.provider.icon,
-                                tint: store.provider.tint,
-                                title: store.provider.title,
-                                subtitle: store.isSimulator ? "Offline, ohne API-Key" : store.selectedModel,
-                                trailing: "wechseln")
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    section("Zugang", icon: "key.fill") {
-                        NavigationLink {
-                            InviteKeysView()
-                        } label: {
-                            row(icon: "person.badge.key.fill",
-                                tint: store.accent,
-                                title: "Invite Keys teilen",
-                                subtitle: "\(store.inviteKeys.filter { !$0.redeemed }.count) offen · \(store.inviteKeys.count) erzeugt",
-                                trailing: store.isFounder ? "Founder" : "öffnen")
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    section("Design", icon: "circle.hexagongrid.fill") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 9) {
-                                ForEach(GlacierTheme.allCases) { theme in
-                                    themeTile(theme)
-                                }
-                            }
-                            Text(store.themeChoice.subtitle)
-                                .font(.system(size: 10.5, weight: .medium, design: .rounded))
-                                .foregroundStyle(VicePalette.gold.opacity(0.85))
-                            NeonDivider()
-                            HStack(spacing: 8) {
-                                ForEach(AccentChoice.allCases) { accent in
-                                    accentDot(accent)
-                                }
-                                Spacer(minLength: 0)
-                            }
-                            Text("Akzent: \(store.accentChoice.title) · Bühne immer dunkel")
-                                .font(.system(size: 10.5, weight: .medium, design: .rounded))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    section("Verhalten", icon: "slider.horizontal.3") {
-                        VStack(spacing: 12) {
-                            toggleRow(icon: "wand.and.stars", title: "Glow-Effekte",
-                                      subtitle: "Akzentlicht auf Glasflächen", isOn: $store.glowEnabled)
-                            Divider().opacity(0.15)
-                            toggleRow(icon: "hand.tap.fill", title: "Haptik",
-                                      subtitle: "Feedback bei Entscheidungen", isOn: $store.hapticsEnabled)
-                            Divider().opacity(0.15)
-                            toggleRow(icon: "dot.radiowaves.left.and.right", title: "Proaktive Scans",
-                                      subtitle: "Alle 15 Minuten im Hintergrund", isOn: $store.proactiveEnabled)
-                            Divider().opacity(0.15)
-                            toggleRow(icon: "moon.zzz.fill", title: "Ruhezeit 23–7 Uhr",
-                                      subtitle: "Keine Push-Störungen in der Nacht", isOn: $store.quietHoursEnabled)
-                        }
-                    }
-
-                    section("Standard-Autonomie", icon: "figure.walk.motion") {
-                        VStack(spacing: 8) {
-                            ForEach(AutonomyLevel.allCases) { level in
-                                Button {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                        store.defaultAutonomy = level
-                                    }
-                                    Haptics.selection()
-                                } label: {
-                                    HStack(spacing: 9) {
-                                        Image(systemName: level.icon)
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .foregroundStyle(level.tint)
-                                            .frame(width: 18)
-                                        VStack(alignment: .leading, spacing: 1) {
-                                            Text(level.title)
-                                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                            Text(level.detail)
-                                                .font(.system(size: 10, design: .rounded))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Spacer(minLength: 0)
-                                        Image(systemName: store.defaultAutonomy == level ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 14))
-                                            .foregroundStyle(store.defaultAutonomy == level ? store.accent : Color.white.opacity(0.18))
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    section("Über Tandem", icon: "info.circle") {
-                        VStack(spacing: 10) {
-                            infoRow("Version", value: version)
-                            Divider().opacity(0.15)
-                            infoRow("Bundle", value: "dev.joe.tandem")
-                            Divider().opacity(0.15)
-                            Link(destination: URL(string: "https://github.com/joe-design9/tandem-agent")!) {
-                                HStack {
-                                    Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                    Text("Quellcode auf GitHub")
-                                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                                    Spacer()
-                                    Image(systemName: "arrow.up.right")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundStyle(.tertiary)
-                                }
-                            }
-                            Divider().opacity(0.15)
-                            HStack {
-                                Text("Gebaut für \(store.userName)")
-                                    .font(.system(size: 11.5, weight: .medium, design: .rounded))
-                                Spacer()
-                                Text("Research Preview")
-                                    .font(.system(size: 10, design: .rounded))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
+            Form {
+                Section("Modell") {
+                    NavigationLink {
+                        ProviderSettingsView()
+                    } label: {
+                        RowLabel(icon: "cpu",
+                                 title: store.isSimulator ? "Tandem Simulator" : store.provider.title,
+                                 detail: store.isSimulator
+                                    ? "Läuft lokal, ohne API-Key"
+                                    : store.provider.models.first { $0.id == store.selectedModel }?.name ?? store.selectedModel)
                     }
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 6)
-                .padding(.bottom, 30)
+
+                Section("Zugang") {
+                    NavigationLink {
+                        InviteKeysView()
+                    } label: {
+                        RowLabel(icon: "key",
+                                 title: "Invite-Codes",
+                                 detail: "\(store.inviteKeys.filter { !$0.redeemed }.count) offen · \(store.inviteKeys.count) erzeugt")
+                    }
+                }
+
+                Section {
+                    Picker("Bühne", selection: $store.themeChoice) {
+                        ForEach(TandemTheme.allCases) { theme in
+                            Text(theme.title).tag(theme)
+                        }
+                    }
+                    Picker("Akzent", selection: $store.accentChoice) {
+                        ForEach(AccentChoice.allCases) { accent in
+                            Text(accent.title).tag(accent)
+                        }
+                    }
+                } header: {
+                    Text("Darstellung")
+                } footer: {
+                    Text("\(store.themeChoice.subtitle). Der Akzent markiert aktive Zustände.")
+                }
+
+                Section("Verhalten") {
+                    Toggle("Haptik", isOn: $store.hapticsEnabled)
+                    Toggle("Proaktive Prüfungen", isOn: $store.proactiveEnabled)
+                    Toggle("Ruhezeit 23–7 Uhr", isOn: $store.quietHoursEnabled)
+                }
+
+                Section {
+                    Picker("Standard", selection: $store.defaultAutonomy) {
+                        ForEach(AutonomyLevel.allCases) { level in
+                            Text(level.title).tag(level)
+                        }
+                    }
+                } header: {
+                    Text("Autonomie")
+                } footer: {
+                    Text(store.defaultAutonomy.detail)
+                }
+
+                Section {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text(version)
+                            .foregroundStyle(Palette.textSecondary)
+                    }
+                    Link(destination: URL(string: "https://github.com/joe-design9/tandem-agent")!) {
+                        HStack {
+                            Text("Quellcode auf GitHub")
+                                .foregroundStyle(Palette.textPrimary)
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Palette.textTertiary)
+                        }
+                    }
+                } header: {
+                    Text("Über Tandem")
+                } footer: {
+                    Text("Gebaut für \(store.userName). Kein Tandem-Konto, kein Server.")
+                }
             }
-            .scrollIndicators(.hidden)
+            .scrollContentBackground(.hidden)
+            .background(AppBackground(theme: store.themeChoice, accent: store.accent))
             .navigationTitle("Mehr")
             .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(isPresented: $showProviderSettings) {
-                ProviderSettingsView()
-            }
+            .tint(store.accent)
         }
     }
 
     private var version: String {
-        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "3"
-        return "\(short) (\(build)) · Autonomous"
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "4"
+        return "\(short) (\(build))"
     }
-
-    private var backboneCard: some View {
-        GlassCard(tint: store.provider.tint, glow: true, padding: 18) {
-            HStack(spacing: 13) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(store.provider.tint.opacity(0.16))
-                        .frame(width: 46, height: 46)
-                    Image(systemName: store.provider.icon)
-                        .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(store.provider.tint)
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.isSimulator ? "Simulator aktiv" : "Modell verbunden")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Text(store.isSimulator
-                         ? "Tandem denkt lokal. Schalte einen Anbieter dazu, wenn du echte Modelle willst."
-                         : "\(store.provider.title) · \(store.provider.models.first { $0.id == store.selectedModel }?.name ?? store.selectedModel)")
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-                Circle()
-                    .fill(store.isSimulator ? store.accent : Color(red: 0.50, green: 0.92, blue: 0.74))
-                    .frame(width: 8, height: 8)
-                    .shadow(color: store.accent, radius: 6)
-            }
-        }
-    }
-
-    private func section<Content: View>(_ title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: title, subtitle: nil, icon: icon, trailing: nil)
-            GlassCard(tint: nil, glow: false, padding: 14) {
-                content()
-            }
-        }
-    }
-
-    private func row(icon: String, tint: Color, title: String, subtitle: String, trailing: String?) -> some View {
-        HStack(spacing: 11) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(tint.opacity(0.14))
-                    .frame(width: 32, height: 32)
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(tint)
-            }
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                Text(subtitle)
-                    .font(.system(size: 10.5, design: .rounded))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-            if let trailing {
-                Text(trailing)
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(.tertiary)
-            }
-            Image(systemName: "chevron.right")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    private func toggleRow(icon: String, title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
-        HStack(spacing: 11) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(store.accent)
-                .frame(width: 20)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                Text(subtitle)
-                    .font(.system(size: 10, design: .rounded))
-                    .foregroundStyle(.tertiary)
-            }
-            Spacer(minLength: 0)
-            Toggle("", isOn: isOn)
-                .labelsHidden()
-                .tint(store.accent)
-                .scaleEffect(0.82)
-        }
-    }
-
-    private func infoRow(_ title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 11.5, design: .rounded))
-            Spacer()
-            Text(value)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func themeTile(_ theme: GlacierTheme) -> some View {
-        let selected = store.themeChoice == theme
-        return Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                store.themeChoice = theme
-            }
-            Haptics.selection()
-        } label: {
-            VStack(spacing: 6) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(previewGradient(theme))
-                        .frame(height: 56)
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(Color.white.opacity(0.18))
-                        .frame(width: 34, height: 12)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.40), lineWidth: 0.6)
-                        }
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(selected ? VicePalette.cyan : Color.white.opacity(0.10),
-                                      lineWidth: selected ? 1.6 : 0.8)
-                }
-                .shadow(color: selected ? VicePalette.cyan.opacity(0.55) : .clear, radius: 8)
-                Text(theme.title)
-                    .font(.system(size: 9.5, weight: selected ? .black : .medium, design: .rounded))
-                    .foregroundStyle(selected ? VicePalette.cyan : .secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func previewGradient(_ theme: GlacierTheme) -> LinearGradient {
-        switch theme {
-        case .electricVice:
-            return LinearGradient(stops: [
-                .init(color: Color(red: 0.09, green: 0.02, blue: 0.13), location: 0.0),
-                .init(color: VicePalette.obsidian, location: 0.40),
-                .init(color: Color(red: 0.30, green: 0.04, blue: 0.22), location: 0.72),
-                .init(color: Color(red: 0.02, green: 0.10, blue: 0.14), location: 1.0),
-            ], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .aurora:
-            return LinearGradient(colors: [Color(red: 0.02, green: 0.08, blue: 0.10),
-                                           Color(red: 0.04, green: 0.20, blue: 0.22),
-                                           VicePalette.mint.opacity(0.45)],
-                                  startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .neonVice:
-            return LinearGradient(colors: [Color(red: 0.10, green: 0.01, blue: 0.14),
-                                           Color(red: 0.36, green: 0.04, blue: 0.30),
-                                           VicePalette.hotPink.opacity(0.55)],
-                                  startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .titanium:
-            return LinearGradient(colors: [Color(red: 0.10, green: 0.11, blue: 0.13),
-                                           Color(red: 0.26, green: 0.28, blue: 0.31),
-                                           Color(red: 0.06, green: 0.07, blue: 0.08)],
-                                  startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
-    }
-
-    private func accentDot(_ accent: AccentChoice) -> some View {
-        let selected = store.accentChoice == accent
-        return Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                store.accentChoice = accent
-            }
-            Haptics.selection()
-        } label: {
-            Circle()
-                .fill(accent.gradient)
-                .frame(width: 23, height: 23)
-                .overlay {
-                    Circle().strokeBorder(Color.white.opacity(selected ? 0.9 : 0.25), lineWidth: selected ? 2 : 0.8)
-                }
-                .overlay {
-                    if selected {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .heavy))
-                            .foregroundStyle(.black.opacity(0.70))
-                    }
-                }
-                .shadow(color: selected ? accent.color.opacity(0.8) : .clear, radius: 7)
-        }
-        .buttonStyle(.plain)
-    }
-
 }
 
-// MARK: - Provider
+// MARK: - KI-Provider
 
 struct ProviderSettingsView: View {
     @Environment(TandemStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     @State private var keyDraft = ""
-    @State private var showKey = false
     @State private var baseURLDraft = ""
     @State private var customModelDraft = ""
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                engineBanner
-
-                SectionHeader(title: "Anbieter", subtitle: nil, icon: "cpu", trailing: nil)
-                VStack(spacing: 8) {
-                    ForEach(ProviderID.allCases) { provider in
-                        providerRow(provider)
-                    }
-                }
-
-                SectionHeader(title: "Modell", subtitle: nil, icon: "square.stack.3d.up", trailing: store.provider.title)
-                VStack(spacing: 6) {
-                    ForEach(store.provider.models) { model in
-                        modelRow(model)
-                    }
-                }
-
-                if store.provider == .custom {
-                    GlassCard(tint: nil, glow: false) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            fieldLabel("Modellname")
-                            TextField("z. B. qwen3-32b", text: $customModelDraft)
-                                .font(.system(size: 12.5, design: .monospaced))
-                                .padding(10)
-                                .background { RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.06)) }
-                                .onSubmit { store.customModel = customModelDraft }
-                            fieldLabel("Base-URL")
-                            TextField("https://dein-server/v1", text: $baseURLDraft)
-                                .font(.system(size: 12.5, design: .monospaced))
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .padding(10)
-                                .background { RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.06)) }
-                                .onSubmit { store.setBaseURL(baseURLDraft) }
-                            Button {
-                                store.customModel = customModelDraft
-                                store.setBaseURL(baseURLDraft)
-                                store.showToast("Endpoint gespeichert", style: .success)
-                            } label: {
-                                Text("Übernehmen").frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(SecondaryGlassButtonStyle())
-                        }
-                    }
-                }
-
-                if store.provider.needsKey {
-                    keySection
-                } else {
-                    GlassCard(tint: store.accent, glow: false) {
+        Form {
+            Section {
+                ForEach(ProviderID.allCases) { provider in
+                    Button {
+                        Haptics.selection()
+                        store.provider = provider
+                    } label: {
                         HStack(spacing: 10) {
-                            Image(systemName: "wifi.slash").foregroundStyle(store.accent)
-                            Text("Der Simulator braucht keinen Key. Er antwortet aus dem App-Zustand und läuft auch im Flugmodus.")
-                                .font(.system(size: 11, design: .rounded))
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(provider.title)
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(Palette.textPrimary)
+                                Text(provider.subtitle)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Palette.textSecondary)
+                            }
+                            Spacer(minLength: 8)
+                            if store.provider == provider {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Palette.accent)
+                            }
                         }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Text("Anbieter")
+            } footer: {
+                Text("Ohne Key arbeitet der eingebaute Simulator. Er braucht kein Netz.")
+            }
+
+            Section("Modell") {
+                ForEach(store.provider.models) { model in
+                    Button {
+                        Haptics.selection()
+                        store.setModel(model.id)
+                        store.testResult = nil
+                    } label: {
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(model.name)
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(Palette.textPrimary)
+                                Text(model.note)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Palette.textSecondary)
+                            }
+                            Spacer(minLength: 8)
+                            if store.selectedModel == model.id {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Palette.accent)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if store.provider == .custom {
+                Section("Eigener Endpoint") {
+                    TextField("Modellname", text: $customModelDraft)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .onSubmit { store.customModel = customModelDraft }
+                    TextField("https://dein-server/v1", text: $baseURLDraft)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                        .onSubmit { store.setBaseURL(baseURLDraft) }
+                    Button("Übernehmen") {
+                        store.customModel = customModelDraft
+                        store.setBaseURL(baseURLDraft)
+                        store.showToast("Endpoint gespeichert", style: .success)
                     }
                 }
-
-                testSection
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 6)
-            .padding(.bottom, 30)
+
+            if store.provider.needsKey {
+                Section {
+                    SecureField(store.provider.keyHint, text: $keyDraft)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    HStack {
+                        Button("Key sichern") {
+                            store.saveKey(keyDraft, for: store.provider)
+                        }
+                        .disabled(keyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Spacer()
+                        if store.keyPresence[store.provider.rawValue] == true {
+                            Button("Entfernen", role: .destructive) {
+                                store.removeKey(for: store.provider)
+                                keyDraft = ""
+                            }
+                        }
+                    }
+                } header: {
+                    Text("API-Key")
+                } footer: {
+                    Text("Der Key liegt im iOS-Keychain und geht nur an \(store.provider.title).")
+                }
+            }
+
+            Section {
+                Button {
+                    store.testProvider()
+                } label: {
+                    HStack(spacing: 8) {
+                        if store.isTesting {
+                            ProgressView().controlSize(.mini)
+                        }
+                        Text(store.isTesting ? "Verbindung wird geprüft…" : "Verbindung testen")
+                            .foregroundStyle(Palette.textPrimary)
+                    }
+                }
+                .disabled(store.isTesting)
+
+                if let result = store.testResult {
+                    Text(result)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Palette.textSecondary)
+                }
+
+                if let url = dashboardURL {
+                    Link("Key besorgen", destination: url)
+                }
+            }
         }
-        .scrollIndicators(.hidden)
+        .scrollContentBackground(.hidden)
+        .background(AppBackground(theme: store.themeChoice, accent: store.accent))
         .navigationTitle("KI-Provider")
         .navigationBarTitleDisplayMode(.inline)
+        .tint(store.accent)
         .onAppear {
             keyDraft = store.apiKey(for: store.provider)
             baseURLDraft = store.baseURLs[store.provider.rawValue] ?? store.provider.defaultBaseURL
@@ -445,216 +263,6 @@ struct ProviderSettingsView: View {
         }
     }
 
-    private var engineBanner: some View {
-        GlassCard(tint: store.provider.tint, glow: true) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(store.provider.tint.opacity(0.16)).frame(width: 40, height: 40)
-                    Image(systemName: store.isSimulator ? "sparkles" : "antenna.radiowaves.left.and.right")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(store.provider.tint)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(store.isSimulator ? "Simulator" : store.provider.title)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Text(store.isSimulator
-                         ? "Läuft ohne Netz. Gut zum Ausprobieren."
-                         : "Aktives Modell: \(store.selectedModel)")
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                Spacer(minLength: 0)
-            }
-        }
-    }
-
-    private func providerRow(_ provider: ProviderID) -> some View {
-        let selected = store.provider == provider
-        return Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                store.provider = provider
-            }
-            Haptics.selection()
-        } label: {
-            HStack(spacing: 11) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(provider.tint.opacity(0.14))
-                        .frame(width: 32, height: 32)
-                    Image(systemName: provider.icon)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(provider.tint)
-                }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(provider.title)
-                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                    Text(provider.subtitle)
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-                if provider.needsKey {
-                    Image(systemName: store.keyPresence[provider.rawValue] == true ? "key.fill" : "key.slash")
-                        .font(.system(size: 9))
-                        .foregroundStyle(store.keyPresence[provider.rawValue] == true ? store.accent : Color.secondary.opacity(0.5))
-                }
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 14))
-                    .foregroundStyle(selected ? provider.tint : Color.white.opacity(0.18))
-            }
-            .padding(11)
-            .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(selected ? provider.tint.opacity(0.10) : Color.white.opacity(0.03))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(selected ? provider.tint.opacity(0.40) : Color.white.opacity(0.08),
-                                          lineWidth: 0.9)
-                    }
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func modelRow(_ model: ModelOption) -> some View {
-        let selected = store.selectedModel == model.id
-        return Button {
-            store.setModel(model.id)
-            store.testResult = nil
-            Haptics.selection()
-        } label: {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(model.name)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                    Text(model.note)
-                        .font(.system(size: 9.5, design: .rounded))
-                        .foregroundStyle(.tertiary)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 13))
-                    .foregroundStyle(selected ? store.accent : Color.white.opacity(0.16))
-            }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 9)
-            .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(selected ? store.accent.opacity(0.08) : Color.white.opacity(0.02))
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var keySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: "API-Key", subtitle: nil, icon: "key.fill",
-                          trailing: store.keyPresence[store.provider.rawValue] == true ? "gesichert" : "fehlt")
-            GlassCard(tint: nil, glow: false) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 8) {
-                        Group {
-                            if showKey {
-                                TextField(store.provider.keyHint, text: $keyDraft)
-                            } else {
-                                SecureField(store.provider.keyHint, text: $keyDraft)
-                            }
-                        }
-                        .font(.system(size: 12, design: .monospaced))
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-
-                        Button {
-                            showKey.toggle()
-                        } label: {
-                            Image(systemName: showKey ? "eye.slash" : "eye")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(10)
-                    .background {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
-                    }
-
-                    HStack(spacing: 8) {
-                        Button {
-                            store.saveKey(keyDraft, for: store.provider)
-                        } label: {
-                            Text("Sichern").frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(PrimaryGlassButtonStyle(tint: store.provider.tint))
-
-                        if store.keyPresence[store.provider.rawValue] == true {
-                            Button {
-                                store.removeKey(for: store.provider)
-                                keyDraft = ""
-                            } label: {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 11)
-                            }
-                            .buttonStyle(SecondaryGlassButtonStyle())
-                        }
-                    }
-
-                    Text("Der Key liegt im iOS-Keychain, nicht in den Einstellungen und nicht im Code. Er geht nur an den gewählten Anbieter.")
-                        .font(.system(size: 9.5, design: .rounded))
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
-
-    private var testSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            GlassCard(tint: nil, glow: false) {
-                VStack(alignment: .leading, spacing: 9) {
-                    HStack(spacing: 8) {
-                        Button {
-                            store.testProvider()
-                        } label: {
-                            HStack(spacing: 6) {
-                                if store.isTesting {
-                                    ProgressView().controlSize(.mini).tint(.black.opacity(0.7))
-                                } else {
-                                    Image(systemName: "bolt.horizontal.circle.fill")
-                                }
-                                Text(store.isTesting ? "Teste…" : "Verbindung testen")
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(SecondaryGlassButtonStyle())
-                        .disabled(store.isTesting)
-                    }
-                    if let result = store.testResult {
-                        Text(result)
-                            .font(.system(size: 10.5, design: .rounded))
-                            .foregroundStyle(result.hasPrefix("Verbunden")
-                                             ? Color(red: 0.50, green: 0.92, blue: 0.74)
-                                             : Color(red: 1.0, green: 0.60, blue: 0.60))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if store.provider.needsKey, let url = dashboardURL {
-                        Link(destination: url) {
-                            HStack(spacing: 4) {
-                                Text("Key besorgen")
-                                Image(systemName: "arrow.up.right").font(.system(size: 8, weight: .bold))
-                            }
-                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(store.provider.tint)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private var dashboardURL: URL? {
         switch store.provider {
         case .anthropic: return URL(string: "https://console.anthropic.com/settings/keys")
@@ -662,174 +270,6 @@ struct ProviderSettingsView: View {
         case .deepseek: return URL(string: "https://platform.deepseek.com/api_keys")
         case .openrouter: return URL(string: "https://openrouter.ai/keys")
         default: return nil
-        }
-    }
-
-    private func fieldLabel(_ text: String) -> some View {
-        Text(text.uppercased())
-            .font(.system(size: 9, weight: .bold, design: .rounded))
-            .tracking(1.1)
-            .foregroundStyle(.tertiary)
-    }
-}
-
-// MARK: - KI-Provider-Banner
-
-/// Der auffälligste Block in den Einstellungen: ein Key schaltet aus dem
-/// lokalen Simulator ein echtes Modell — und damit die volle Power.
-struct AIProviderBanner: View {
-    @Environment(TandemStore.self) private var store
-    var openSettings: () -> Void
-
-    private let featured: [ProviderID] = [.anthropic, .openai, .deepseek, .openrouter]
-
-    var body: some View {
-        GlassCard(tint: store.accent, glow: true, padding: 18) {
-            VStack(alignment: .leading, spacing: 15) {
-                HStack(spacing: 8) {
-                    Insignia(text: "Echte KI", tint: VicePalette.cyan, icon: "sparkles")
-                    Spacer(minLength: 0)
-                    StatusBadge(text: store.isSimulator ? "Simulator" : "Modell aktiv",
-                                tint: store.isSimulator ? VicePalette.gold : VicePalette.mint,
-                                icon: store.isSimulator ? "cpu" : "checkmark.seal.fill")
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Ein Key, volle Agenten-Power")
-                        .font(.system(size: 19, weight: .semibold))
-                        .fontWidth(.condensed)
-                        .foregroundStyle(Color.white.opacity(0.95))
-                    Text("Der Simulator plant lokal. Ein Key schaltet die volle Claude-Power frei — oder GPT, DeepSeek, OpenRouter. Dieselben Werkzeuge, dieselben Pläne, nur mit echtem Modell im Rücken.")
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(Color.white.opacity(0.46))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                VStack(spacing: 8) {
-                    ForEach(featured) { provider in
-                        providerRow(provider)
-                    }
-                }
-
-                Button {
-                    Haptics.tap()
-                    openSettings()
-                } label: {
-                    HStack(spacing: 5) {
-                        Text("Alle Provider und Modelle")
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 8, weight: .bold))
-                    }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.62))
-                }
-                .buttonStyle(.plain)
-
-                Text("Keys liegen im iOS-Keychain und gehen nur an den gewählten Anbieter. Ohne Key bleibt der Simulator aktiv.")
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(Color.white.opacity(0.26))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private func providerRow(_ provider: ProviderID) -> some View {
-        let hasKey = store.keyPresence[provider.rawValue] == true
-        let isCurrent = store.provider == provider
-        let result = store.testProviderID == provider.rawValue ? store.testResult : nil
-        let testing = store.isTesting && store.testProviderID == provider.rawValue
-
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 10) {
-                Image(systemName: provider.icon)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(provider.tint)
-                    .frame(width: 30, height: 30)
-                    .background {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(provider.tint.opacity(0.09))
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(provider.tint.opacity(0.18), lineWidth: 0.5)
-                    }
-
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 5) {
-                        Text(provider.title)
-                            .font(.system(size: 12.5, weight: .medium))
-                            .foregroundStyle(Color.white.opacity(0.88))
-                        if isCurrent {
-                            Circle().fill(provider.tint).frame(width: 4, height: 4)
-                        }
-                    }
-                    Text(modelHint(provider))
-                        .font(.system(size: 9.5))
-                        .foregroundStyle(Color.white.opacity(0.32))
-                }
-
-                Spacer(minLength: 0)
-
-                Button {
-                    Haptics.tap()
-                    store.testProvider(provider)
-                } label: {
-                    HStack(spacing: 4) {
-                        if testing {
-                            ProgressView().controlSize(.mini).tint(provider.tint)
-                        } else {
-                            Image(systemName: hasKey ? "bolt.horizontal.circle" : "key")
-                                .font(.system(size: 9, weight: .semibold))
-                        }
-                        Text(testing ? "Teste…" : (hasKey ? "Testen" : "Key"))
-                    }
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(provider.tint)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background { Capsule().fill(provider.tint.opacity(0.10)) }
-                    .overlay { Capsule().strokeBorder(provider.tint.opacity(0.22), lineWidth: 0.5) }
-                }
-                .buttonStyle(.plain)
-                .disabled(store.isTesting)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                store.provider = provider
-                Haptics.selection()
-                openSettings()
-            }
-
-            if let result {
-                Text(result)
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(result.hasPrefix("Verbunden")
-                                     ? VicePalette.mint
-                                     : VicePalette.coral)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 40)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(isCurrent ? 0.05 : 0.025))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(isCurrent ? provider.tint.opacity(0.28) : Color.white.opacity(0.05),
-                                      lineWidth: 0.5)
-                }
-        }
-    }
-
-    private func modelHint(_ provider: ProviderID) -> String {
-        switch provider {
-        case .anthropic: return "Claude Opus 4.5 · Sonnet 4.5 · Haiku 4.5"
-        case .openai: return "GPT-4o · GPT-4.1 · o4-mini"
-        case .deepseek: return "DeepSeek Chat · Reasoner"
-        case .openrouter: return "Claude, GPT, Gemini, Llama — ein Key"
-        default: return provider.subtitle
         }
     }
 }

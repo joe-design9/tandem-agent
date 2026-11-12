@@ -31,14 +31,12 @@ enum InviteKeys {
         masterKeys.contains(normalize(code))
     }
 
-    /// Erzeugt einen Code im Vice-Style: meist VICE-XXXX-XXXX,
-    /// gelegentlich TNDM-XXXX-XXXX.
+    /// Erzeugt einen Code der Form TNDM-XXXX-XXXX.
     static func generate() -> String {
         func block(_ length: Int) -> String {
             String((0..<length).map { _ in alphabet.randomElement() ?? "X" })
         }
-        let prefix = Bool.random() ? "VICE" : "TNDM"
-        return "\(prefix)-\(block(4))-\(block(4))"
+        return "TNDM-\(block(4))-\(block(4))"
     }
 
     /// Format, das im Feld angezeigt wird: TNDM-AB12-CD34.

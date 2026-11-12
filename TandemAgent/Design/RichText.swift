@@ -1,11 +1,11 @@
 import SwiftUI
 
 /// Kleiner Markdown-Renderer für Chat-Antworten: Überschriften,
-/// Aufzählungen, nummerierte Listen, Code und Tabellen. Absichtlich
-/// schlank — er deckt genau das ab, was Tandem selbst schreibt.
+/// Aufzählungen, nummerierte Listen, Code und Tabellen. Ruhige Typografie
+/// ohne Rahmen und ohne Farbe.
 struct RichText: View {
     var markdown: String
-    var accent: Color = AccentChoice.mint.color
+    var accent: Color = Palette.textSecondary
 
     var body: some View {
         let items = blocks()
@@ -79,7 +79,6 @@ struct RichText: View {
                         .trimmingCharacters(in: CharacterSet(charactersIn: "|"))
                         .components(separatedBy: "|")
                         .map { $0.trimmingCharacters(in: .whitespaces) }
-                    // Trennzeile | --- | --- | überspringen.
                     if !cells.allSatisfy({ $0.allSatisfy { $0 == "-" || $0 == ":" } }) {
                         rows.append(cells)
                     }
@@ -89,7 +88,7 @@ struct RichText: View {
                 continue
             }
             if line.hasPrefix("- ") || line.hasPrefix("• ") || line.hasPrefix("* ") {
-                result.append(.bullet(inline(String(line.dropFirst(2)))))
+                result.append(.bullet(String(line.dropFirst(2))))
                 index += 1
                 continue
             }
@@ -99,65 +98,65 @@ struct RichText: View {
                line[line.index(after: dot)] == " " {
                 let number = String(line[line.startIndex..<dot])
                 let text = String(line[line.index(dot, offsetBy: 2)...])
-                result.append(.numbered(number, inline(text)))
+                result.append(.numbered(number, text))
                 index += 1
                 continue
             }
-            result.append(.paragraph(inline(line)))
+            result.append(.paragraph(line))
             index += 1
         }
         return result
     }
-
-    private func inline(_ text: String) -> String { text }
 
     @ViewBuilder
     private func view(for block: Block) -> some View {
         switch block {
         case .heading(let text, let level):
             Text(attributed(text))
-                .font(.system(size: level == 1 ? 19 : (level == 2 ? 16 : 14),
-                              weight: .bold, design: .rounded))
-                .foregroundStyle(.primary)
-                .padding(.top, level == 1 ? 2 : 6)
+                .font(.system(size: level == 1 ? 18 : (level == 2 ? 16 : 15), weight: .semibold))
+                .foregroundStyle(Palette.textPrimary)
+                .padding(.top, level == 1 ? 4 : 6)
         case .paragraph(let text):
             Text(attributed(text))
-                .font(.system(size: 14.5, design: .rounded))
-                .foregroundStyle(.primary.opacity(0.92))
+                .font(.system(size: 15))
+                .foregroundStyle(Palette.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         case .bullet(let text):
-            HStack(alignment: .top, spacing: 7) {
-                Circle().fill(accent).frame(width: 5, height: 5).padding(.top, 7)
+            HStack(alignment: .top, spacing: 8) {
+                Text("•")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Palette.textTertiary)
                 Text(attributed(text))
-                    .font(.system(size: 14.5, design: .rounded))
-                    .foregroundStyle(.primary.opacity(0.92))
+                    .font(.system(size: 15))
+                    .foregroundStyle(Palette.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .numbered(let number, let text):
             HStack(alignment: .top, spacing: 8) {
-                Text(number)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(accent)
-                    .frame(minWidth: 14, alignment: .trailing)
-                    .padding(.top, 2)
+                Text("\(number).")
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(Palette.textTertiary)
+                    .frame(minWidth: 16, alignment: .leading)
+                    .padding(.top, 1)
                 Text(attributed(text))
-                    .font(.system(size: 14.5, design: .rounded))
-                    .foregroundStyle(.primary.opacity(0.92))
+                    .font(.system(size: 15))
+                    .foregroundStyle(Palette.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .code(let code):
             Text(code)
                 .font(.system(size: 12.5, design: .monospaced))
+                .foregroundStyle(Palette.textPrimary)
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.black.opacity(0.25))
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Palette.surfaceSunken)
                 }
         case .table(let rows):
             RichTable(rows: rows, accent: accent)
         case .divider:
-            Rectangle().fill(Color.white.opacity(0.10)).frame(height: 1)
+            Rectangle().fill(Palette.hairline).frame(height: 0.5)
         }
     }
 
@@ -167,9 +166,7 @@ struct RichText: View {
     }
 }
 
-/// Tabelle als echtes Raster mit Glaszeilen — Markdown-Tabellen kann
-/// Foundation nicht rendern, und im Agenten-Chat sind sie zu nützlich,
-/// um sie wegzulassen.
+/// Tabelle als schlichtes Raster mit Haarlinien.
 struct RichTable: View {
     var rows: [[String]]
     var accent: Color
@@ -179,29 +176,23 @@ struct RichTable: View {
             ForEach(rows.indices, id: \.self) { index in
                 HStack(spacing: 0) {
                     ForEach(rows[index].indices, id: \.self) { cellIndex in
-                        let cell = rows[index][cellIndex]
-                        Text(cell)
-                            .font(.system(size: 12, weight: index == 0 ? .semibold : .regular, design: .rounded))
-                            .foregroundStyle(index == 0 ? accent : .primary.opacity(0.88))
+                        Text(rows[index][cellIndex])
+                            .font(.system(size: 13, weight: index == 0 ? .medium : .regular))
+                            .foregroundStyle(index == 0 ? Palette.textSecondary : Palette.textPrimary)
                             .lineLimit(3)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        if cellIndex < rows[index].count - 1 {
-                            Divider().opacity(0.3)
-                        }
+                            .padding(.trailing, 6)
                     }
                 }
                 .padding(.vertical, 7)
                 .padding(.horizontal, 10)
-                .background(index == 0 ? accent.opacity(0.10) : Color.white.opacity(index % 2 == 0 ? 0.02 : 0))
+                .background(index == 0 ? Palette.surfaceRaised : Color.clear)
+
                 if index < rows.count - 1 {
-                    Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.7)
+                    Rectangle().fill(Palette.hairline).frame(height: 0.5)
                 }
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
-        }
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }

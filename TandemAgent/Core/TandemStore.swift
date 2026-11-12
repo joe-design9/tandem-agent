@@ -41,17 +41,14 @@ final class TandemStore {
     var customModel: String = "" {
         didSet { defaults.set(customModel, forKey: Keys.customModel) }
     }
-    var themeChoice: GlacierTheme = .electricVice {
+    var themeChoice: TandemTheme = .obsidian {
         didSet { defaults.set(themeChoice.rawValue, forKey: Keys.theme) }
     }
-    var accentChoice: AccentChoice = .vicePink {
+    var accentChoice: AccentChoice = .sand {
         didSet { defaults.set(accentChoice.rawValue, forKey: Keys.accent) }
     }
     var appearance: Appearance = .dark {
         didSet { defaults.set(appearance.rawValue, forKey: Keys.appearance) }
-    }
-    var glowEnabled: Bool = true {
-        didSet { defaults.set(glowEnabled, forKey: "tandem.glow") }
     }
     var hapticsEnabled: Bool = true {
         didSet { defaults.set(hapticsEnabled, forKey: "tandem.haptics") }
@@ -139,23 +136,20 @@ final class TandemStore {
         models = defaults.dictionary(forKey: Keys.models) as? [String: String] ?? [:]
         baseURLs = defaults.dictionary(forKey: Keys.baseURLs) as? [String: String] ?? [:]
         customModel = defaults.string(forKey: Keys.customModel) ?? ""
-        if let raw = defaults.string(forKey: Keys.theme), let value = GlacierTheme(rawValue: raw) {
+        if let raw = defaults.string(forKey: Keys.theme), let value = TandemTheme(rawValue: raw) {
             themeChoice = value
         }
         if let raw = defaults.string(forKey: Keys.accent), let value = AccentChoice(rawValue: raw) {
             accentChoice = value
         }
-        // 1.2.0: Obsidian als Bühne, einmalig auch für Bestandsinstallationen.
-        if !defaults.bool(forKey: "tandem.obsidianMigration") {
-            themeChoice = .electricVice
-            accentChoice = .vicePink
-            defaults.set(true, forKey: "tandem.obsidianMigration")
+        // 1.3.0: ruhige, monochrome Bühne — einmalig auch für Bestandsinstallationen.
+        if !defaults.bool(forKey: "tandem.calmMigration") {
+            themeChoice = .obsidian
+            accentChoice = .sand
+            defaults.set(true, forKey: "tandem.calmMigration")
         }
         if let raw = defaults.string(forKey: Keys.appearance), let value = Appearance(rawValue: raw) {
             appearance = value
-        }
-        if defaults.object(forKey: "tandem.glow") != nil {
-            glowEnabled = defaults.bool(forKey: "tandem.glow")
         }
         if defaults.object(forKey: "tandem.haptics") != nil {
             hapticsEnabled = defaults.bool(forKey: "tandem.haptics")
@@ -251,25 +245,6 @@ final class TandemStore {
         )
     }
 
-    /// Alles, was das Laufband an echter Telemetrie zeigen kann.
-    var liveSignals: [String] {
-        var lines: [String] = []
-        if let task = runningTasks.first {
-            let step = task.currentStep?.title ?? "läuft"
-            lines.append("\(task.title.uppercased()) · \(Int(task.progress * 100)) % · \(step)")
-        }
-        if let approval = pendingApprovals.first {
-            lines.append("FREIGABE OFFEN · \(approval.title) · \(approval.risk.title)")
-        }
-        if let scan = checkIns.first {
-            lines.append("\(scan.title) · \(scan.detail)")
-        }
-        lines.append("ENGINE · \(engineLabel)")
-        let repoScan = checkIns.first { $0.title.localizedCaseInsensitiveContains("repo") }
-        lines.append("REPOS · \(repoScan?.detail ?? "keine Warnung")")
-        return lines
-    }
-
     // MARK: - Modell / Keys
 
     func setModel(_ model: String) {
@@ -346,8 +321,8 @@ final class TandemStore {
             inviteKeys[index].redeemed = true
             inviteKeys[index].redeemedAt = Date()
         }
-        audit.insert(AuditEvent(title: "Clearance freigegeben",
-                                detail: "Invite-Key \(code) eingelöst",
+        audit.insert(AuditEvent(title: "Zugang freigeschaltet",
+                                detail: "Einladungscode \(code) eingelöst",
                                 icon: "key.fill",
                                 kind: .system), at: 0)
         persist()
@@ -984,11 +959,11 @@ final class TandemStore {
             temperature: "9 °C",
             agenda: [
                 BriefingItem(time: "09:30", title: "Standup mit dem Team", detail: "15 Minuten, danach Fokusblock", icon: "person.2.fill"),
-                BriefingItem(time: "11:00", title: "Fokusblock: Tandem 1.2.0", detail: "Agent-Engine, Build, IPA, Release", icon: "hammer.fill", highlight: true),
+                BriefingItem(time: "11:00", title: "Fokusblock: Tandem 1.3.0", detail: "Ruhiges Design, Build, IPA, Release", icon: "hammer.fill", highlight: true),
                 BriefingItem(time: "14:00", title: "Review: Playtest Vault", detail: "3 Pull Requests warten", icon: "chevron.left.forwardslash.chevron.right"),
                 BriefingItem(time: "18:30", title: "Laufrunde am Rhein", detail: "6 km, ab 18 Uhr trocken", icon: "figure.run"),
             ],
-            todos: ["Omas iPhone-Backup prüfen", "PR #12 in playtest-vault reviewen", "Release-Notes für Tandem 1.2.0 schreiben"],
+            todos: ["Omas iPhone-Backup prüfen", "PR #12 in playtest-vault reviewen", "Release-Notes für Tandem 1.3.0 schreiben"],
             nightNote: "Nachtaktivität: Mail-Scan um 02:14 (0 dringend), GitHub durchgehend grün, iPhone-Backup um 03:12 gesichert."
         )
 
@@ -998,9 +973,9 @@ final class TandemStore {
             CheckIn(icon: "chevron.left.forwardslash.chevron.right", title: "Repo-Scan vor 32 Min.", detail: "Alle 4 Repos grün, keine roten CI-Läufe", date: now.addingTimeInterval(-1920), tone: .good),
             CheckIn(icon: "calendar", title: "Kalender-Scan vor 48 Min.", detail: "Nächster Termin 11:00 — Fokusblock Tandem", date: now.addingTimeInterval(-2880), tone: .neutral),
             CheckIn(icon: "cloud.sun.rain", title: "Wetter vor 1 Std.", detail: "Regen ab 16:00 erkannt", date: now.addingTimeInterval(-3600), tone: .neutral),
-            CheckIn(icon: "brain.head.profile", title: "Gedächtnis vor 2 Std.", detail: "Neuer Fakt: Tandem-Projekt (Release 1.2.0)", date: now.addingTimeInterval(-7200), tone: .good),
+            CheckIn(icon: "brain.head.profile", title: "Gedächtnis vor 2 Std.", detail: "Neuer Fakt: Tandem-Projekt (Release 1.3.0)", date: now.addingTimeInterval(-7200), tone: .good),
             CheckIn(icon: "bolt.batteryblock", title: "Gerät vor 3 Std.", detail: "Akku 74 %, Backup um 03:12 gelaufen", date: now.addingTimeInterval(-10800), tone: .good),
-            CheckIn(icon: "key.fill", title: "Clearance vor 5 Std.", detail: "Invite-Key eingelöst, Founder-Zugang aktiv", date: now.addingTimeInterval(-18000), tone: .good),
+            CheckIn(icon: "key.fill", title: "Zugang vor 5 Std.", detail: "Einladungscode eingelöst", date: now.addingTimeInterval(-18000), tone: .good),
         ]
 
         approvals = [
@@ -1129,7 +1104,7 @@ final class TandemStore {
             AuditEvent(date: now.addingTimeInterval(-1500), title: "Aufgabe gestartet", detail: "GTA-6-News-Lage", icon: "play.circle.fill", kind: .task),
             AuditEvent(date: now.addingTimeInterval(-2400), title: "Freigabe vorbereitet", detail: "Antwort an Lisa Breuer", icon: "envelope.badge", kind: .approval),
             AuditEvent(date: now.addingTimeInterval(-7200), title: "Freigabe vorbereitet", detail: "Alte Build-Artefakte löschen", icon: "trash.fill", kind: .approval),
-            AuditEvent(date: now.addingTimeInterval(-18000), title: "Clearance freigegeben", detail: "Invite-Key JOEL-VIP eingelöst", icon: "key.fill", kind: .system),
+            AuditEvent(date: now.addingTimeInterval(-18000), title: "Zugang freigeschaltet", detail: "Einladungscode JOEL-VIP eingelöst", icon: "key.fill", kind: .system),
             AuditEvent(date: now.addingTimeInterval(-86400), title: "Gedächtnis ergänzt", detail: "Projekt Tandem mit Release-Plan", icon: "brain.head.profile", kind: .memory),
         ]
 
@@ -1138,7 +1113,7 @@ final class TandemStore {
                         facts: ["Joel, Köln", "Entwickler — baut unter anderem GTA-6-Hub und Playtest Vault", "Spricht Deutsch, mag trockenen Humor"],
                         updatedAt: now, pinned: true),
             MemoryTopic(emoji: "🛠️", title: "Projekte",
-                        facts: ["gta6-hub: SwiftUI-News-Portal, v2.0.0", "playtest-vault: Testmanagement, v0.9 in Arbeit", "tandem-agent: dieser Agent, 1.2.0 The Autonomous Agent"],
+                        facts: ["gta6-hub: SwiftUI-News-Portal, v2.0.0", "playtest-vault: Testmanagement, v0.9 in Arbeit", "tandem-agent: dieser Agent, 1.3.0 Handcrafted"],
                         updatedAt: now.addingTimeInterval(-7200)),
             MemoryTopic(emoji: "👵", title: "Familie",
                         facts: ["Oma lebt in der Nähe, iPhone-Hilfe per Telefon", "Nächster Arzttermin Donnerstag, 11:00"],
@@ -1152,7 +1127,7 @@ final class TandemStore {
         ]
 
         services = [
-            ConnectedService(id: "mail", name: "Mail", icon: "envelope.fill", tintKey: "mail",
+            ConnectedService(id: "mail", name: "Mail", icon: "envelope", tintKey: "mail",
                              detail: "joelminther1@gmail.com", status: .connected,
                              scopes: ["Lesen", "Entwürfe", "Senden nach Freigabe"]),
             ConnectedService(id: "calendar", name: "Kalender", icon: "calendar", tintKey: "calendar",

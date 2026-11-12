@@ -38,9 +38,9 @@ enum AutonomyLevel: String, Codable, CaseIterable, Identifiable {
 
     var tint: Color {
         switch self {
-        case .ask: return Color(red: 0.42, green: 0.80, blue: 1.00)
-        case .suggest: return VicePalette.cyan
-        case .act: return VicePalette.gold
+        case .ask: return Palette.textSecondary
+        case .suggest: return Palette.accent
+        case .act: return Palette.accent
         }
     }
 }
@@ -103,9 +103,9 @@ enum Risk: String, Codable, CaseIterable {
 
     var color: Color {
         switch self {
-        case .low: return Color(red: 0.35, green: 1.00, blue: 0.74)
-        case .medium: return VicePalette.gold
-        case .high: return VicePalette.hotPink
+        case .low: return Palette.textSecondary
+        case .medium: return Palette.textSecondary
+        case .high: return Palette.danger
         }
     }
 }
@@ -132,22 +132,16 @@ struct ApprovalRequest: Identifiable, Codable, Hashable {
 
         var icon: String {
             switch self {
-            case .email: return "envelope.fill"
-            case .payment: return "creditcard.fill"
+            case .email: return "envelope"
+            case .payment: return "creditcard"
             case .calendar: return "calendar.badge.clock"
-            case .deletion: return "trash.fill"
-            case .message: return "bubble.left.and.bubble.right.fill"
+            case .deletion: return "trash"
+            case .message: return "bubble.left.and.bubble.right"
             }
         }
 
         var tint: Color {
-            switch self {
-            case .email: return VicePalette.cyan
-            case .payment: return VicePalette.gold
-            case .calendar: return VicePalette.coral
-            case .deletion: return VicePalette.hotPink
-            case .message: return Color(red: 0.72, green: 0.60, blue: 1.00)
-            }
+            Palette.icon
         }
     }
 
@@ -208,11 +202,11 @@ struct AgentLogEntry: Identifiable, Codable, Hashable {
 
         var tint: Color {
             switch self {
-            case .info: return Color(red: 0.66, green: 0.68, blue: 0.78)
-            case .tool: return VicePalette.cyan
-            case .result: return Color(red: 0.40, green: 0.94, blue: 0.76)
-            case .approval: return VicePalette.gold
-            case .warning: return VicePalette.coral
+            case .info: return Palette.textSecondary
+            case .tool: return Palette.icon
+            case .result: return Palette.accent
+            case .approval: return Palette.accent
+            case .warning: return Palette.danger
             }
         }
     }
@@ -270,11 +264,20 @@ struct AgentTask: Identifiable, Codable, Hashable {
 
         var color: Color {
             switch self {
-            case .queued: return Color(red: 0.62, green: 0.62, blue: 1.00)
-            case .running: return VicePalette.cyan
-            case .paused: return VicePalette.gold
-            case .done: return Color(red: 0.40, green: 1.00, blue: 0.74)
-            case .cancelled: return VicePalette.hotPink
+            case .queued: return Palette.textSecondary
+            case .running: return Palette.accent
+            case .paused: return Palette.textSecondary
+            case .done: return Palette.textSecondary
+            case .cancelled: return Palette.danger
+            }
+        }
+
+        /// Für den Status-Chip: nur laufende Läufe bekommen den Akzent.
+        var tone: StatusTag.Tone {
+            switch self {
+            case .running: return .active
+            case .cancelled: return .danger
+            default: return .neutral
             }
         }
     }
@@ -330,14 +333,7 @@ struct AuditEvent: Identifiable, Codable, Hashable {
         case memory
 
         var color: Color {
-            switch self {
-            case .approval: return VicePalette.gold
-            case .task: return VicePalette.cyan
-            case .scan: return Color(red: 0.55, green: 0.75, blue: 1.00)
-            case .tool: return Color(red: 0.62, green: 0.52, blue: 1.00)
-            case .system: return Color(red: 0.70, green: 0.72, blue: 0.80)
-            case .memory: return Color(red: 0.72, green: 0.60, blue: 1.00)
-            }
+            Palette.icon
         }
     }
 }
@@ -352,9 +348,9 @@ struct CheckIn: Identifiable, Codable, Hashable {
 
         var color: Color {
             switch self {
-            case .neutral: return VicePalette.cyan
-            case .good: return Color(red: 0.40, green: 1.00, blue: 0.74)
-            case .warn: return VicePalette.coral
+            case .neutral: return Palette.textSecondary
+            case .good: return Palette.accent
+            case .warn: return Palette.danger
             }
         }
     }
@@ -418,9 +414,9 @@ struct ConnectedService: Identifiable, Codable, Hashable {
 
         var color: Color {
             switch self {
-            case .connected: return Color(red: 0.40, green: 1.00, blue: 0.74)
-            case .pending: return VicePalette.gold
-            case .off: return Color(red: 0.62, green: 0.66, blue: 0.75)
+            case .connected: return Palette.accent
+            case .pending: return Palette.textSecondary
+            case .off: return Palette.textTertiary
             }
         }
     }
@@ -437,16 +433,9 @@ struct ConnectedService: Identifiable, Codable, Hashable {
 }
 
 enum ServiceTint {
+    /// Dienste tragen keine eigenen Farben mehr — alle Icons sind monochrom.
     static func color(_ key: String) -> Color {
-        switch key {
-        case "mail": return VicePalette.cyan
-        case "calendar": return VicePalette.coral
-        case "github": return Color(red: 0.85, green: 0.88, blue: 0.98)
-        case "x": return Color(red: 0.92, green: 0.92, blue: 0.97)
-        case "device": return VicePalette.cyan
-        case "music": return VicePalette.magenta
-        default: return Color(red: 0.70, green: 0.76, blue: 0.90)
-        }
+        Palette.icon
     }
 }
 
@@ -556,14 +545,7 @@ enum ProviderID: String, Codable, CaseIterable, Identifiable, Hashable {
     }
 
     var tint: Color {
-        switch self {
-        case .simulator: return VicePalette.magenta
-        case .anthropic: return VicePalette.coral
-        case .openai: return Color(red: 0.55, green: 0.96, blue: 0.86)
-        case .deepseek: return Color(red: 0.52, green: 0.62, blue: 1.00)
-        case .openrouter: return Color(red: 0.78, green: 0.60, blue: 1.00)
-        case .custom: return Color(red: 0.80, green: 0.84, blue: 0.92)
-        }
+        Palette.icon
     }
 
     var needsKey: Bool { self != .simulator }
@@ -648,9 +630,9 @@ struct ToastMessage: Identifiable, Equatable {
 
         var color: Color {
             switch self {
-            case .success: return Color(red: 0.40, green: 1.00, blue: 0.74)
-            case .info: return VicePalette.cyan
-            case .warning: return VicePalette.gold
+            case .success: return Palette.accent
+            case .info: return Palette.textSecondary
+            case .warning: return Palette.danger
             }
         }
     }

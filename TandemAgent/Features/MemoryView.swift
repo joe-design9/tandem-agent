@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Was Tandem über Joel weiß — sichtbar, änderbar, löschbar.
+/// Was Tandem über dich weiß — sichtbar, ergänzbar, löschbar. Eine
+/// schlichte Liste, kein Dashboard.
 struct MemoryView: View {
     @Environment(TandemStore.self) private var store
     @State private var addFactTo: MemoryTopic?
@@ -8,20 +9,130 @@ struct MemoryView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    profileCard
-                    topicsSection
-                    servicesSection
-                    privacyCard
+            Form {
+                Section {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Palette.surfaceRaised)
+                                .frame(width: 48, height: 48)
+                            Text(initials)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Palette.textPrimary)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(store.userName)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Palette.textPrimary)
+                            Text("\(store.city) · \(store.role)")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Palette.textSecondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 4)
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 6)
-                .padding(.bottom, 30)
+
+                if store.memoryTopics.isEmpty {
+                    Section {
+                        EmptyState(icon: "brain",
+                                   title: "Noch nichts gespeichert",
+                                   message: "Ich merke mir nur, was im Gespräch vorkommt oder was du hier ergänzt.")
+                    }
+                } else {
+                    ForEach(store.memoryTopics) { topic in
+                        Section {
+                            ForEach(topic.facts, id: \.self) { fact in
+                                Text(fact)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(Palette.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            Haptics.tap()
+                                            store.removeFact(fact, from: topic.id)
+                                        } label: {
+                                            Label("Löschen", systemImage: "trash")
+                                        }
+                                    }
+                            }
+
+                            Button {
+                                Haptics.tap()
+                                addFactTo = topic
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(Palette.textSecondary)
+                                    Text("Fakt hinzufügen")
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(Palette.textSecondary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        } header: {
+                            HStack {
+                                Text(topic.title)
+                                Spacer()
+                                Text(RelativeTime.string(from: topic.updatedAt))
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Palette.textTertiary)
+                            }
+                        }
+                    }
+                }
+
+                Section {
+                    ForEach(store.services) { service in
+                        HStack(spacing: 12) {
+                            Image(systemName: service.icon)
+                                .font(.system(size: 15))
+                                .foregroundStyle(Palette.icon)
+                                .frame(width: 22)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(service.name)
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(Palette.textPrimary)
+                                Text(service.detail)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Palette.textSecondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 8)
+                            Toggle("", isOn: Binding(
+                                get: { service.status != .off },
+                                set: { _ in store.toggleService(service.id) }
+                            ))
+                            .labelsHidden()
+                        }
+                    }
+                } header: {
+                    Text("Verbundene Dienste")
+                } footer: {
+                    Text("Nur verbundene Dienste darf der Agent lesen. Schreibende Aktionen brauchen immer eine Freigabe.")
+                }
+
+                Section {
+                    Button("Gedächtnis leeren", role: .destructive) {
+                        Haptics.warning()
+                        confirmWipe = true
+                    }
+                    Button("App sperren") {
+                        Haptics.tap()
+                        store.lockApp()
+                    }
+                } header: {
+                    Text("Kontrolle")
+                } footer: {
+                    Text("Gedächtnis und Chat liegen lokal auf diesem iPhone. Kein Tandem-Server, kein Konto.")
+                }
             }
-            .scrollIndicators(.hidden)
+            .scrollContentBackground(.hidden)
+            .background(AppBackground(theme: store.themeChoice, accent: store.accent))
             .navigationTitle("Gedächtnis")
             .navigationBarTitleDisplayMode(.large)
+            .tint(store.accent)
             .sheet(item: $addFactTo) { topic in
                 AddFactView(topic: topic) { fact in
                     store.addFact(fact, to: topic.id)
@@ -40,241 +151,10 @@ struct MemoryView: View {
         }
     }
 
-    // MARK: Profil
-
-    private var profileCard: some View {
-        GlassCard(tint: VicePalette.magenta, glow: true, padding: 18) {
-            HStack(alignment: .top, spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(colors: [VicePalette.gold, VicePalette.coral, VicePalette.magenta],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 58, height: 58)
-                        .shadow(color: VicePalette.magenta.opacity(0.65), radius: 14)
-                    Text(initials)
-                        .font(.system(size: 21, weight: .black, design: .rounded))
-                        .foregroundStyle(Color.black.opacity(0.78))
-                }
-                .overlay {
-                    Circle().strokeBorder(Color.white.opacity(0.45), lineWidth: 1)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(store.userName)
-                            .font(.system(size: 19, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
-                        if store.isFounder {
-                            Image(systemName: "crown.fill")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(VicePalette.gold)
-                                .padding(4)
-                                .background { Circle().fill(VicePalette.gold.opacity(0.18)) }
-                        }
-                    }
-                    Text("\(store.city) · \(store.role)")
-                        .font(.system(size: 11.5, design: .rounded))
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 5) {
-                        if store.isFounder {
-                            StatusBadge(text: "VIP ACCESS", tint: VicePalette.gold, icon: "sparkles")
-                        }
-                        StatusBadge(text: store.hasUnlocked ? "PREVIEW AKTIV" : "GESPERRT",
-                                    tint: store.hasUnlocked ? Color(red: 0.40, green: 1.00, blue: 0.74) : .secondary,
-                                    icon: "lock.fill")
-                    }
-                    .padding(.top, 2)
-                }
-                Spacer(minLength: 0)
-            }
-        }
-    }
-
     private var initials: String {
         let parts = store.userName.split(separator: " ")
         let letters = parts.prefix(2).compactMap { $0.first }
         return letters.isEmpty ? "J" : String(letters).uppercased()
-    }
-
-    // MARK: Themen
-
-    private var topicsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Was ich über dich weiß",
-                          subtitle: nil,
-                          icon: "brain.head.profile",
-                          trailing: "\(store.memoryTopics.reduce(0) { $0 + $1.facts.count }) Fakten")
-
-            if store.memoryTopics.isEmpty {
-                GlassCard(tint: nil, glow: false, padding: 18) {
-                    Text("Noch nichts gespeichert. Tandem lernt nur aus Gesprächen und aus dem, was du hier einträgst.")
-                        .font(.system(size: 11.5, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            ForEach(store.memoryTopics) { topic in
-                GlassCard(tint: nil, glow: false, padding: 0) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 9) {
-                            Text(topic.emoji).font(.system(size: 17))
-                            Text(topic.title)
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                            if topic.pinned {
-                                Image(systemName: "pin.fill")
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(store.accent)
-                            }
-                            Spacer()
-                            Text(RelativeTime.string(from: topic.updatedAt))
-                                .font(.system(size: 9, design: .rounded))
-                                .foregroundStyle(.tertiary)
-                            Button {
-                                Haptics.tap()
-                                addFactTo = topic
-                            } label: {
-                                Image(systemName: "plus.circle")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(store.accent)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, 15)
-                        .padding(.top, 14)
-                        .padding(.bottom, 8)
-
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(topic.facts, id: \.self) { fact in
-                                HStack(alignment: .top, spacing: 8) {
-                                    Circle()
-                                        .fill(store.accent.opacity(0.55))
-                                        .frame(width: 4, height: 4)
-                                        .padding(.top, 6)
-                                    Text(fact)
-                                        .font(.system(size: 11.5, design: .rounded))
-                                        .foregroundStyle(.primary.opacity(0.88))
-                                        .fixedSize(horizontal: false, vertical: true)
-                                    Spacer(minLength: 0)
-                                    Button {
-                                        withAnimation { store.removeFact(fact, from: topic.id) }
-                                    } label: {
-                                        Image(systemName: "xmark")
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundStyle(.tertiary)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .padding(.horizontal, 17)
-                                .padding(.vertical, 5)
-                            }
-                        }
-                        .padding(.bottom, 12)
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: Dienste
-
-    private var servicesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Verbundene Dienste", subtitle: nil, icon: "link",
-                          trailing: "\(store.services.filter { $0.status == .connected }.count) aktiv")
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                ForEach(store.services) { service in
-                    Button {
-                        store.toggleService(service.id)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 7) {
-                            HStack {
-                                Image(systemName: service.icon)
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundStyle(service.status == .off ? Color.secondary : service.tint)
-                                Spacer()
-                                Circle()
-                                    .fill(service.status.color)
-                                    .frame(width: 6, height: 6)
-                            }
-                            Text(service.name)
-                                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                            Text(service.detail)
-                                .font(.system(size: 9.5, design: .rounded))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(.ultraThinMaterial)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(Color.white.opacity(0.02))
-                                }
-                        }
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
-                        }
-                        .opacity(service.status == .off ? 0.6 : 1)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    // MARK: Datenschutz
-
-    private var privacyCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Kontrolle", subtitle: nil, icon: "lock.shield.fill", trailing: nil)
-            GlassCard(tint: nil, glow: false, padding: 16) {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 9) {
-                        Image(systemName: "iphone.gen3")
-                            .font(.system(size: 13))
-                            .foregroundStyle(store.accent)
-                        Text("Gedächtnis liegt lokal auf diesem iPhone. Kein Tandem-Server, kein Konto.")
-                            .font(.system(size: 11, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    HStack(spacing: 8) {
-                        Button {
-                            confirmWipe = true
-                        } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: "trash")
-                                Text("Gedächtnis leeren")
-                            }
-                            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color(red: 1.0, green: 0.52, blue: 0.58))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .background { Capsule().fill(Color.white.opacity(0.06)) }
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            store.lockApp()
-                        } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: "lock.fill")
-                                Text("App sperren")
-                            }
-                            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .background { Capsule().fill(Color.white.opacity(0.06)) }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -288,21 +168,20 @@ struct AddFactView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Neuer Fakt für „\(topic.title)“")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                TextField("z. B. mag keine Meetings vor 10 Uhr", text: $text, axis: .vertical)
-                    .font(.system(size: 13.5, design: .rounded))
-                    .lineLimit(2...5)
-                    .padding(12)
-                    .background {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
-                    }
-                    .focused($focused)
-                Spacer()
+            Form {
+                Section {
+                    TextField("Was soll ich mir merken?", text: $text, axis: .vertical)
+                        .font(.system(size: 15))
+                        .lineLimit(2...5)
+                        .focused($focused)
+                } header: {
+                    Text(topic.title)
+                } footer: {
+                    Text("Kurz und konkret. Du kannst den Fakt jederzeit wieder löschen.")
+                }
             }
-            .padding(18)
+            .scrollContentBackground(.hidden)
+            .background(Palette.background)
             .navigationTitle("Fakt hinzufügen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
