@@ -21,6 +21,28 @@ struct SettingsView: View {
                     }
                 }
 
+                Section {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Siri & Shortcuts")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Palette.textPrimary)
+                        Text("„Hey Siri, frag Tandem nach meinem Briefing“")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Palette.textSecondary)
+                        Text("„Hey Siri, lass Tandem meine Repos prüfen“")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Palette.textSecondary)
+                        Text("„Hey Siri, leg einen Auftrag in Tandem an“")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Palette.textSecondary)
+                    }
+                    .padding(.vertical, 2)
+                } header: {
+                    Text("Siri")
+                } footer: {
+                    Text("Die Sätze funktionieren ohne Einrichtung. Eigene Kurzbefehle findest du in der Kurzbefehle-App unter „Tandem“.")
+                }
+
                 Section("Zugang") {
                     NavigationLink {
                         InviteKeysView()

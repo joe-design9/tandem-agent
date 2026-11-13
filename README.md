@@ -1,8 +1,8 @@
 # Tandem — Agent
 
-**Ein persönlicher Agent für iPhone — 1.3.0 „Handcrafted & Butterweich“: radikal aufgeräumt, monochrom, ruhig. Ziel rein, Plan raus, Werkzeuge laufen, alles Riskante wartet auf dein Ja.**
+**Ein persönlicher Agent für iPhone — 1.4.0 „Siri AI Edition“: kein Key, kein Setup, keine Cloud. Die Engine läuft auf dem Gerät, versteht Smalltalk und hängt an Siri. Ziel rein, Antwort raus — Werkzeuge laufen, alles Riskante wartet auf dein Ja.**
 
-Tandem ist kein Chatfenster mit Extras. Du gibst ein Ziel, der Agent plant Schritte, ruft Werkzeuge auf (`web.scan`, `repo.check`, `mail.triage`, `memory.sync`) und legt dir alles Riskante als fertige Entscheidung auf den Tisch — die du mit einem Tipp freigibst oder ablehnst.
+Tandem ist kein Chatfenster mit Extras. Du schreibst „Hi“ und bekommst ein „Moin Joel, was steht an?“ — du gibst ein Ziel, der Agent plant Schritte, ruft Werkzeuge auf (`web.scan`, `repo.check`, `mail.triage`, `memory.sync`) und legt dir alles Riskante als fertige Entscheidung auf den Tisch. Und mit „Hey Siri, frag Tandem nach meinem Briefing“ antwortet er auch, wenn die App zu ist.
 
 > Tandem ist eine **Research Preview**. Der Zugang hängt an einem Invite-Code, nicht an einem App-Store-Account.
 
@@ -17,11 +17,12 @@ Tandem ist kein Chatfenster mit Extras. Du gibst ein Ziel, der Agent plant Schri
 | **Werkzeug-Registry** | Lesend: `web.scan`, `web.read`, `news.rank`, `repo.check`, `ci.inspect`, `mail.triage`, `mail.rank`, `calendar.read`, `calendar.plan`, `memory.sync`, `weather.read`, `brief.compose`, `doc.write`. Schreibend nur nach Freigabe: `mail.send`, `calendar.create`, `pay.charge`, `github.artifacts.delete`. |
 | **Freigaben** | E-Mails, Zahlungen, Kalender, Löschungen: Tandem bereitet vor, führt aber **nichts** ohne dein Ja aus. Empfänger, Betreff, Volltext, Betrag und Begründung stehen in der Vorschau. |
 | **Aufgaben** | Aktiv, Verlauf und Protokoll in einer Liste. Titel, Status-Chip, Dauer; Schritte und Protokoll klappen auf Wunsch auf. |
-| **Chat** | Ruhiger Verlauf wie in iMessage. Werkzeuge erscheinen als eine Zeile („3 Schritte ausgeführt“) und klappen sich auf Tipp auf. Streaming und Markdown inklusive Tabellen. |
+| **Chat** | Ruhiger Verlauf wie in iMessage, Kopfzeile „Siri AI“. Begrüßungen, Dank und Fragen bekommen eine Antwort; Werkzeuge erscheinen als eine Zeile („3 Schritte ausgeführt“) und klappen sich auf Tipp auf. Streaming und Markdown inklusive Tabellen. |
 | **Gedächtnis** | Profil, Projekte, Familie, Vorlieben, Arbeitsrhythmus — jeder Fakt sichtbar, ergänzbar, löschbar. Liegt lokal. |
 | **Invite-Codes** | Codes erzeugen, kopieren, teilen, löschen. Jeder Code schaltet eine Installation frei. |
-| **Multi-Provider** | Anthropic Claude, OpenAI, DeepSeek, OpenRouter und jeder OpenAI-kompatible eigene Endpoint. Keys im iOS-Keychain. |
-| **Simulator** | Läuft **ohne API-Key** und ohne Netz: erkennt Absichten, baut Pläne, ruft Werkzeuge gegen den echten App-Zustand auf und antwortet daraus. Direkt nach dem Sideloading benutzbar. |
+| **Siri und Shortcuts** | Drei App Intents: Briefing vorlesen, Repos prüfen, Auftrag anlegen. Feste Siri-Phrasen („Frag Tandem nach meinem Briefing“), automatisch in Kurzbefehle und Spotlight. |
+| **Multi-Provider (optional)** | Anthropic Claude, OpenAI, DeepSeek, OpenRouter und jeder OpenAI-kompatible eigene Endpoint — nur, wenn du willst. Keys im iOS-Keychain. |
+| **Siri AI (On-Device)** | Die Standard-Engine: läuft **ohne API-Key**, ohne Konto, ohne Netz. Versteht Begrüßung, Smalltalk, Dank und Fragen — und plant nur dann einen Lauf, wenn du wirklich etwas verlangst. Direkt nach dem Sideloading benutzbar. |
 | **Design** | Tiefes Obsidian-Schwarz, eine Fläche pro Karte, monochrome SF Symbols, genau ein warmer Akzent für aktive Zustände. Keine Blurs, keine Animationen im Hintergrund, keine Neon-Rahmen. |
 
 ---
@@ -46,7 +47,7 @@ Beim ersten Start steht die ruhige Willkommensseite: **„Willkommen bei Tandem 
 
 ## Installation (Sideloadly / AltStore)
 
-1. `TandemAgent-1.3.0.ipa` aus den [Releases](https://github.com/joe-design9/tandem-agent/releases/latest) laden.
+1. `TandemAgent-1.4.0.ipa` aus den [Releases](https://github.com/joe-design9/tandem-agent/releases/latest) laden.
 2. In Sideloadly (oder AltStore) mit der eigenen Apple-ID signieren und aufs iPhone schieben.
 3. App öffnen → Einladungscode eintragen → loslegen.
 
@@ -64,7 +65,8 @@ open TandemAgent.xcodeproj
 
 - SwiftUI, iOS 26.0 Deployment Target, Swift-6.2-Toolchain
 - Bundle-ID `dev.joe.tandem`
-- Keine externen Abhängigkeiten, kein Package Manager, kein Netzwerk im Simulator-Modus
+- Keine externen Abhängigkeiten, kein Package Manager; die On-Device-Engine geht nicht ins Netz
+- Siri-Anbindung über `AppIntents` (`Core/TandemIntents.swift`), iOS 26+
 
 Unsignierte IPA bauen (wie in der CI):
 
@@ -74,7 +76,7 @@ xcodebuild -project TandemAgent.xcodeproj -scheme TandemAgent \
   -derivedDataPath build \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 mkdir Payload && cp -R build/Build/Products/Release-iphoneos/Tandem.app Payload/
-zip -qry TandemAgent-1.3.0.ipa Payload
+zip -qry TandemAgent-1.4.0.ipa Payload
 ```
 
 ---
@@ -85,14 +87,14 @@ zip -qry TandemAgent-1.3.0.ipa Payload
 
 | Anbieter | Modelle | Key |
 | --- | --- | --- |
-| Tandem Simulator | lokal, regelbasiert | keiner |
+| Siri AI (On-Device) | on-device, regelbasiert | keiner — Standard |
 | Anthropic Claude | Opus 4.5, Sonnet 4.5, Haiku 4.5 | `sk-ant-…` |
 | OpenAI | GPT-4o, GPT-4.1, o4-mini | `sk-…` |
 | DeepSeek | Chat, Reasoner | `sk-…` |
 | OpenRouter | Claude, GPT, Gemini, Llama | `sk-or-…` |
 | Eigener Endpoint | beliebig, OpenAI-kompatibel | optional |
 
-Keys liegen ausschließlich im Keychain (`kSecClassGenericPassword`, `AfterFirstUnlock`) und gehen nur an den gewählten Anbieter. Ohne Key schaltet Tandem automatisch auf den Simulator — die App funktioniert also immer.
+Keys liegen ausschließlich im Keychain (`kSecClassGenericPassword`, `AfterFirstUnlock`) und gehen nur an den gewählten Anbieter. Ohne Key antwortet **Siri AI (On-Device)** direkt auf dem Gerät — die App funktioniert also immer, auch ohne Netz.
 
 ---
 
@@ -101,10 +103,10 @@ Keys liegen ausschließlich im Keychain (`kSecClassGenericPassword`, `AfterFirst
 ```
 TandemAgent/
 ├── App/            TandemApp, RootView, Tabs, Toast, QA-Overlay
-├── Core/           Models, TandemStore (Zustand), AgentEngine (Ausführung), TaskPlanner, ToolRegistry, InviteKeys
+├── Core/           Models, TandemStore (Zustand), AgentEngine (Ausführung), TaskPlanner, ToolRegistry, TandemIntents (Siri), InviteKeys
 ├── Design/         Glass (Palette, Flächen, Typografie, Haptik), RichText (Markdown + Tabellen)
 ├── Features/       InviteGate, Onboarding, Home, Approvals, Tasks, Chat, Memory, Settings, InviteKeys
-└── Services/       AIService (Streaming, 5 Provider), DemoBrain (Agenten-Simulator), Keychain
+└── Services/       AIService (Streaming, 5 Provider), OnDeviceBrain (Siri AI auf dem Gerät), Keychain
 .github/workflows/  build-ipa.yml (unverändert: unsignierte IPA, Release-Upload)
 ```
 
@@ -113,6 +115,15 @@ TandemAgent/
 ---
 
 ## Changelog
+
+### 1.4.0 — 13. November 2026 · Siri AI Edition
+- **Siri (App Intents):** `BriefingIntent`, `RepoCheckIntent` und `QuickTaskIntent` in `Core/TandemIntents.swift`, dazu ein `AppShortcutsProvider` mit festen Phrasen („Frag Tandem nach meinem Briefing“, „Lass Tandem meine Repos prüfen“, „Neuer Auftrag für Tandem“). Läuft auf dem Gerät, ohne Key — auch aus Kurzbefehlen, Spotlight und Siri.
+- **Engine neu geschrieben:** `DemoBrain` → `OnDeviceBrain` („Siri AI (On-Device)“). Begrüßungen, Dank, Gelächter, Verabschiedungen und Befindensfragen bekommen eine Antwort statt eines Plans; die Begrüßung richtet sich nach der Uhrzeit und trägt echte Zahlen aus dem App-Zustand.
+- **Fallback repariert:** Unbekannter Text und kurze Einzeiler werden **nicht mehr** blind als `plan.build → memory.sync → web.scan` klassifiziert. Ein Lauf entsteht nur bei einer echten Handlungsaufforderung („starte“, „prüf“, „überwache“, „erstell“, „kümmere dich“ …); Fragen werden beantwortet, und was die lokale Engine nicht belegen kann, sagt sie offen.
+- **Siri liest den App-Zustand:** `TandemStore.shared` verbindet App, Siri und Shortcuts — ein Auftrag aus Siri steht sofort im Aufgaben-Tab, ein Repo-Check landet im Audit-Log.
+- **UI:** Chat-Kopfzeile „Siri AI“ statt „Lokal“, Heute-Kopfzeile ebenso; in *Mehr → Modell* heißt die Standard-Engine „Siri AI (On-Device)“ mit „Apple Intelligence · ohne Key, ohne Netz“.
+- **Projekte:** Repo-Liste der Engine auf `gta6-hub`, `tandem-agent`, `playtest-vault`, `gta-vi-news` gestellt.
+- Version 1.4.0 (Build 5). CI-Workflow unverändert.
 
 ### 1.3.0 — 12. November 2026 · Handcrafted & Butterweich
 - **Performance:** Canvas-Körnung (900 Pixel-Loops), animierte Blur-Ellipsen (`repeatForever`, `blur(radius: 34)`) und doppelte Schatten auf jeder Karte entfernt. Der Hintergrund ist jetzt ein einziger statischer Verlauf; Karten sind flache Flächen mit Haarlinie. Scrollen läuft ohne Metal-Last.

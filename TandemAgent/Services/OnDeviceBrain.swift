@@ -127,6 +127,8 @@ enum OnDeviceBrain {
         "hi", "hallo", "hallöchen", "hey", "moin", "servus", "yo", "tach", "hej", "hiya", "grüß", "guten", "mahlzeit", "na",
     ]
 
+    private static let greetingTail: Set<String> = ["morgen", "tag", "abend", "nacht", "moin", "mahlzeit", "grüß"]
+
     private static let greetingFiller: Set<String> = [
         "du", "dir", "dich", "joel", "tandem", "da", "bist", "was", "machst", "geht", "gehts", "läuft", "alles", "gut",
         "und", "so", "schön", "dass", "es", "gibt", "wie", "bei", "mein", "freund", "auch", "mal", "wieder", "denn", "s",
@@ -135,14 +137,14 @@ enum OnDeviceBrain {
     private static func isGreeting(_ u: Utterance) -> Bool {
         guard let first = u.words.first, greetingWords.contains(first) else { return false }
         let rest = u.words.dropFirst()
-        return rest.allSatisfy { greetingWords.contains($0) || greetingFiller.contains($0) }
+        return rest.allSatisfy { greetingWords.contains($0) || greetingTail.contains($0) || greetingFiller.contains($0) }
     }
 
     private static let actionVerbs: [String] = [
         "start", "überwach", "monitor", "prüf", "check", "kontrollier", "erstell", "anleg", "richte", "einricht",
         "sammel", "fass", "schick", "sende", "delegier", "kümmer", "übernimm", "plane", "lösch", "schreib", "entwirf",
         "aktualisier", "update", "bereite", "organisier", "erinner", "recherchier", "analysier", "vergleich",
-        "reservier", "bestell", "setz", "stell",
+        "reservier", "bestell", "setz", "stell", "mach", "erledige", "installier", "kauf",
     ]
 
     private static let questionStarters: [String] = [
@@ -167,12 +169,25 @@ enum OnDeviceBrain {
 
     // MARK: - Kleinkram
 
-    private static let acknowledgements: Set<String> = ["ja", "nein", "nee", "doch", "klar", "gern", "gerne", "bitte", "hm", "hmm", "äh"]
+    private static let acknowledgements: Set<String> = ["ja", "nein", "nee", "doch", "klar", "gern", "gerne", "bitte"]
+    private static let fillerSounds: Set<String> = ["hm", "hmm", "mhm", "äh", "öh", "huh"]
 
     private static func smallTalk(_ u: Utterance, context c: AgentContext) -> Plan? {
+        if u.words.count <= 2, !u.words.isEmpty, u.words.allSatisfy({ fillerSounds.contains($0) }) {
+            return Plan(text: "Ich bin da. Sag in einem Satz, was du willst — ich kümmere mich drum.")
+        }
+
         if u.words.count <= 2, !u.words.isEmpty, u.words.allSatisfy({ acknowledgements.contains($0) }) {
             return Plan(text: """
-            Ich habe kein „Ja“ zu etwas offen — sag mir in einem Satz, was ich tun soll, dann läuft es. Oder frag mich nach deinem Tag, deinen Repos oder den Freigaben.
+            Ich habe gerade kein „Ja“ offen, auf das sich das bezieht. Sag mir in einem Satz, was ich tun soll, dann läuft es — oder frag mich nach deinem Tag, deinen Repos oder den Freigaben.
+            """)
+        }
+
+        if u.mentionsWord("witz", "witze") || u.mentions("erzähl einen witz", "kennst du einen witz") {
+            return Plan(text: """
+            Zwei Developer treffen sich. Sagt der eine: „Bei mir läuft alles.“ Sagt der andere: „Zeig mal den Build-Log.“
+
+            — Reicht das, oder soll ich lieber deine Repos prüfen?
             """)
         }
 
@@ -332,6 +347,10 @@ enum OnDeviceBrain {
     }
 
     private static func mailAnswer(_ u: Utterance, context c: AgentContext) -> Plan {
+        if isActionRequest(u) && u.mentions("schreib", "sende", "schick", "antworte", "entwirf", "formulier", "beantworte") {
+            return delegate(u)
+        }
+
         let urgent = c.pendingApprovals.first { $0.kind == .email }
         let task = isActionRequest(u)
 
@@ -478,6 +497,10 @@ enum OnDeviceBrain {
     }
 
     private static func dayAnswer(_ u: Utterance, context c: AgentContext) -> Plan {
+        if isActionRequest(u) && !u.mentions("briefing", "termin", "kalender", "woche", "tag") {
+            return delegate(u)
+        }
+
         let lines = c.agenda.map { "- **\($0.time)** — \($0.title)\($0.detail.isEmpty ? "" : " · \($0.detail)")" }.joined(separator: "\n")
         let todos = c.todos.prefix(3).map { "- \($0)" }.joined(separator: "\n")
         let task = isActionRequest(u) && u.mentions("briefing")
