@@ -382,11 +382,17 @@ enum OnDeviceBrain {
             answer += "\n\nDer **Mail-Triage-Lauf** ist gestartet: scannen → einordnen → Entwurf → Freigabe."
         }
 
+        // Ein laufender Auftrag braucht seine Aufgaben-Karte — sonst bliebe der Lauf unsichtbar,
+        // wenn gleichzeitig eine Mail-Freigabe offen ist.
+        let card: ChatCard? = task
+            ? taskCard("Postfach sortieren", "Triage mit Entwürfen, Versand nur nach Freigabe")
+            : urgent.map { urgentCard($0) }
+
         return Plan(tools: [("mail.triage", "Postfach scannen", "\(c.unreadMails) ungelesen"),
                             ("mail.rank", "Wichtigkeit sortieren", urgent == nil ? "0 dringend" : "1 dringend"),
                             ("mail.draft", "Antwort entwerfen", urgent == nil ? "nichts nötig" : "Entwurf steht")],
                     text: answer,
-                    card: urgent.map { urgentCard($0) } ?? (task ? taskCard("Postfach sortieren", "Triage mit Entwürfen, Versand nur nach Freigabe") : nil),
+                    card: card,
                     task: task ? ("Postfach sortieren", "Sortiere mein Postfach und entwerfe Antworten für alles Dringende") : nil)
     }
 
