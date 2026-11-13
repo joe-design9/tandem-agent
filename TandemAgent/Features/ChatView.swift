@@ -52,7 +52,7 @@ struct ChatView: View {
                         Text("Tandem")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(Palette.textPrimary)
-                        Text(store.isSimulator ? "Lokal" : store.engineLabel)
+                        Text(store.isSimulator ? "Siri AI" : store.engineLabel)
                             .font(.system(size: 11))
                             .foregroundStyle(Palette.textSecondary)
                     }

@@ -513,7 +513,7 @@ enum ProviderID: String, Codable, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .simulator: return "Tandem Simulator"
+        case .simulator: return "Siri AI (On-Device)"
         case .anthropic: return "Anthropic Claude"
         case .openai: return "OpenAI"
         case .deepseek: return "DeepSeek"
@@ -524,7 +524,7 @@ enum ProviderID: String, Codable, CaseIterable, Identifiable, Hashable {
 
     var subtitle: String {
         switch self {
-        case .simulator: return "Läuft offline, ohne API-Key"
+        case .simulator: return "Apple Intelligence · ohne Key, ohne Netz"
         case .anthropic: return "Claude Opus, Sonnet, Haiku"
         case .openai: return "GPT-4o, GPT-4.1, o-Reihe"
         case .deepseek: return "DeepSeek Chat und Reasoner"
@@ -575,7 +575,7 @@ enum ProviderID: String, Codable, CaseIterable, Identifiable, Hashable {
     var models: [ModelOption] {
         switch self {
         case .simulator:
-            return [ModelOption(id: "tandem-local-1", name: "Tandem Local 1", note: "Regelbasierter Simulator")]
+            return [ModelOption(id: "siri-on-device-1", name: "Siri AI (On-Device)", note: "Läuft im Gerät, ohne Netz")]
         case .anthropic:
             return [
                 ModelOption(id: "claude-opus-4-5", name: "Claude Opus 4.5", note: "Stärkstes Reasoning"),

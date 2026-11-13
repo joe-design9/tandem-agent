@@ -3,7 +3,7 @@ import SwiftUI
 @main
 @MainActor
 struct TandemApp: App {
-    @State private var store = TandemStore()
+    @State private var store = TandemStore.shared
 
     var body: some Scene {
         WindowGroup {

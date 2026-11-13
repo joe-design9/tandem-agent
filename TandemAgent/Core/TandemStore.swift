@@ -8,6 +8,10 @@ import Observation
 @Observable
 final class TandemStore {
 
+    /// Eine Instanz für App, Siri und Shortcuts. Die Intents lesen und schreiben
+    /// denselben Zustand, den du auf dem Bildschirm siehst.
+    static let shared = TandemStore()
+
     // MARK: - Identität
 
     var userName: String = "Joel"
@@ -183,7 +187,7 @@ final class TandemStore {
     var isSimulator: Bool { provider == .simulator || (provider.needsKey && apiKey(for: provider).isEmpty) }
 
     var engineLabel: String {
-        isSimulator ? "Tandem Agent · Simulator" : provider.title
+        isSimulator ? "Siri AI · On-Device" : provider.title
     }
 
     var pendingApprovals: [ApprovalRequest] {
@@ -239,7 +243,7 @@ final class TandemStore {
             runningTasks: runningTasks,
             memoryHighlights: memoryTopics.flatMap { $0.facts.prefix(1) },
             unreadMails: 3,
-            repos: ["gta6-hub", "playtest-vault", "tandem-agent", "hermes-frontend"],
+            repos: ["gta6-hub", "tandem-agent", "playtest-vault", "gta-vi-news"],
             nightNote: briefing.nightNote,
             recentScans: checkIns
         )
@@ -281,7 +285,7 @@ final class TandemStore {
     func testProvider(_ target: ProviderID) {
         guard !isTesting else { return }
         guard target != .simulator else {
-            testResult = "Simulator bereit — kein Key nötig."
+            testResult = "Siri AI (On-Device) bereit — kein Key, kein Netz nötig."
             testProviderID = target.rawValue
             return
         }
@@ -695,12 +699,12 @@ final class TandemStore {
 
     private func respond(to text: String, simulator: Bool) async {
         let messageID = UUID()
-        var message = ChatMessage(role: .agent, text: "", engine: simulator ? "Tandem Agent" : provider.title)
+        var message = ChatMessage(role: .agent, text: "", engine: simulator ? "Siri AI (On-Device)" : provider.title)
         message.id = messageID
         messages.append(message)
 
         if simulator {
-            let plan = DemoBrain.plan(for: text, context: agentContext)
+            let plan = OnDeviceBrain.plan(for: text, context: agentContext)
             if !plan.tools.isEmpty {
                 let calls = plan.tools.map { ToolCall(name: $0.name, label: $0.label) }
                 updateMessage(messageID) { $0.tools = calls }
@@ -749,7 +753,7 @@ final class TandemStore {
                 }
             } catch {
                 updateMessage(messageID) {
-                    $0.text = "**Verbindung fehlgeschlagen.** \(error.localizedDescription)\n\nTipp: In den Einstellungen den Key prüfen oder auf den Tandem-Simulator umschalten — der läuft immer."
+                    $0.text = "**Verbindung fehlgeschlagen.** \(error.localizedDescription)\n\nTipp: In den Einstellungen den Key prüfen oder auf Siri AI (On-Device) umschalten — das läuft immer."
                 }
                 showToast("Anbieter nicht erreichbar", style: .warning)
             }
@@ -1195,7 +1199,7 @@ final class TandemStore {
     private func seedQAChat() {
         messages = [
             ChatMessage(role: .user, text: "Was steht heute an und was ist mit den Mails?", date: Date().addingTimeInterval(-180)),
-            ChatMessage(role: .agent, text: DemoBrain.plan(for: "heute", context: agentContext).text, date: Date().addingTimeInterval(-170), engine: "Tandem Agent"),
+            ChatMessage(role: .agent, text: OnDeviceBrain.plan(for: "heute", context: agentContext).text, date: Date().addingTimeInterval(-170), engine: "Siri AI (On-Device)"),
         ]
     }
     #endif

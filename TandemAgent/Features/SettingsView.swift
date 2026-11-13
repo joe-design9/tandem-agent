@@ -14,9 +14,9 @@ struct SettingsView: View {
                         ProviderSettingsView()
                     } label: {
                         RowLabel(icon: "cpu",
-                                 title: store.isSimulator ? "Tandem Simulator" : store.provider.title,
+                                 title: store.isSimulator ? "Siri AI (On-Device)" : store.provider.title,
                                  detail: store.isSimulator
-                                    ? "Läuft lokal, ohne API-Key"
+                                    ? "Apple Intelligence · ohne Key, ohne Netz"
                                     : store.provider.models.first { $0.id == store.selectedModel }?.name ?? store.selectedModel)
                     }
                 }
@@ -98,8 +98,8 @@ struct SettingsView: View {
     }
 
     private var version: String {
-        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3.0"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "4"
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "5"
         return "\(short) (\(build))"
     }
 }
@@ -145,7 +145,7 @@ struct ProviderSettingsView: View {
             } header: {
                 Text("Anbieter")
             } footer: {
-                Text("Ohne Key arbeitet der eingebaute Simulator. Er braucht kein Netz.")
+                Text("Ohne Key antwortet Siri AI (On-Device) direkt auf dem Gerät — kein Netz, keine Anfrage nach draußen.")
             }
 
             Section("Modell") {
@@ -248,7 +248,7 @@ struct ProviderSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(AppBackground(theme: store.themeChoice, accent: store.accent))
-        .navigationTitle("KI-Provider")
+        .navigationTitle("Modell")
         .navigationBarTitleDisplayMode(.inline)
         .tint(store.accent)
         .onAppear {

@@ -49,7 +49,7 @@ struct HomeView: View {
     // MARK: Begrüßung
 
     private var dateLine: some View {
-        Text("\(RelativeTime.weekdayLong(Date())) · \(store.isSimulator ? "Lokal" : store.provider.title)")
+        Text("\(RelativeTime.weekdayLong(Date())) · \(store.isSimulator ? "Siri AI" : store.provider.title)")
             .font(.system(size: 13))
             .foregroundStyle(Palette.textSecondary)
     }

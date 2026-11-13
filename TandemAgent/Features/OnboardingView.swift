@@ -68,7 +68,7 @@ struct OnboardingView: View {
                         Text("Läuft sofort, auch ohne API-Key")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Palette.textPrimary)
-                        Text("Der eingebaute Simulator übernimmt den ersten Lauf. Echte Modelle schaltest du später in den Einstellungen dazu.")
+                        Text("Siri AI (On-Device) übernimmt den ersten Lauf — ohne Key, ohne Netz. Ein eigenes Modell kannst du später dazuschalten.")
                             .font(.system(size: 13))
                             .foregroundStyle(Palette.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
